@@ -7,7 +7,7 @@
 
 set -euo pipefail
 
-REPO_URL="https://github.com/YOUR_ORG/PiDepartures.git"
+REPO_URL="https://github.com/OktaneZA/PiDepartures.git"
 INSTALL_DIR="/opt/train-display"
 CONFIG_DIR="/etc/train-display"
 CONFIG_FILE="${CONFIG_DIR}/config"

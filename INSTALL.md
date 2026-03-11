@@ -41,7 +41,7 @@ ssh pi@raspberrypi.local
 ### 3. Clone and run installer
 
 ```bash
-git clone https://github.com/YOUR_ORG/PiDepartures.git /tmp/train-display
+git clone https://github.com/OktaneZA/PiDepartures.git /tmp/train-display
 sudo bash /tmp/train-display/install.sh
 ```
 
