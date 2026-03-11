@@ -1,0 +1,7 @@
+[Unit]
+Description=Scheduled reboot for Train Departure Display
+After=train-display-reboot.timer
+
+[Service]
+Type=oneshot
+ExecStart=/bin/systemctl reboot

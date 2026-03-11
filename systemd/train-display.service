@@ -1,0 +1,16 @@
+[Unit]
+Description=Train Departure Display
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=train-display
+Group=train-display
+EnvironmentFile=/etc/train-display/config
+ExecStart=/opt/train-display/.venv/bin/python /opt/train-display/src/main.py
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

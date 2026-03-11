@@ -1,0 +1,9 @@
+# SEC-11: exact pinned versions for reproducible Pi installs
+luma.oled==3.13.0
+luma.core==2.4.2
+requests==2.31.0
+xmltodict==0.13.0
+RPi.GPIO==0.7.1
+spidev==3.6
+urllib3==2.2.0
+pillow==10.3.0
