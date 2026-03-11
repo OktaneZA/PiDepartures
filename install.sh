@@ -14,7 +14,7 @@ CONFIG_FILE="${CONFIG_DIR}/config"
 SERVICE_NAME="train-display"
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
 TIMER_FILE="/etc/systemd/system/${SERVICE_NAME}-reboot.timer"
-TIMER_UNIT="/etc/systemd/system/${SERVICE_NAME}-reboot-target.service"
+TIMER_UNIT="/etc/systemd/system/${SERVICE_NAME}-reboot.target.service"
 
 # Colours
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; NC='\033[0m'

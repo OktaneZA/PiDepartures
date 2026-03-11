@@ -1,7 +1,7 @@
 [Unit]
-Description=Scheduled reboot for Train Departure Display
-After=train-display-reboot.timer
+Description=Trigger weekly system reboot for Train Departure Display
+# REBOOT-04: reboot performed via systemctl reboot (clean shutdown sequence)
 
 [Service]
 Type=oneshot
-ExecStart=/bin/systemctl reboot
+ExecStart=/usr/bin/systemctl reboot
