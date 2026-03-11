@@ -1,4 +1,8 @@
-# Dev-only dependencies — not installed on the Pi
--r requirements.txt
+# Dev-only dependencies — safe to install on Windows/Linux/macOS for testing.
+# Pi-specific packages (RPi.GPIO, spidev, luma.*) are mocked in tests and excluded here.
+# For Pi deployment use requirements.txt directly.
+requests>=2.31.0
+xmltodict>=0.13.0
+pillow>=10.3.0
 pytest>=8.0
 pytest-mock>=3.12
