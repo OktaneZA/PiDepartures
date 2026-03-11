@@ -10,7 +10,7 @@ import os
 import re
 import sys
 
-CONFIG_FILE = "/etc/train-display/config"
+CONFIG_FILE = os.environ.get("TRAIN_DISPLAY_CONFIG", "/etc/train-display/config")
 _CRS_RE = re.compile(r"^[A-Z]{3}$")
 
 PASS = "[ PASS ]"

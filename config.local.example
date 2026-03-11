@@ -1,0 +1,11 @@
+# Local dev config — copy to config.local and fill in your values.
+# config.local is gitignored so your API key is never committed.
+#
+# Usage:
+#   Windows (Git Bash / WSL):  TRAIN_DISPLAY_CONFIG=config.local python validate.py
+#   PowerShell:                $env:TRAIN_DISPLAY_CONFIG="config.local"; python validate.py
+
+API_KEY=your-api-key-here
+DEPARTURE_STATION=PAD
+# DESTINATION_STATION=
+# PLATFORM_FILTER=
