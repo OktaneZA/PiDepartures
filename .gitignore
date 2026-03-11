@@ -22,6 +22,9 @@ config.local
 .DS_Store
 Thumbs.db
 
+# Preview output
+preview.png
+
 # pytest
 .pytest_cache/
 .coverage
