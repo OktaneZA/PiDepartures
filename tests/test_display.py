@@ -45,10 +45,10 @@ _mock_luma()
 
 
 # ---------------------------------------------------------------------------
-# blank-hours logic tests (open.py)
+# blank-hours logic tests (hours.py)
 # ---------------------------------------------------------------------------
 
-import open as open_mod
+import hours as open_mod
 
 
 class TestBlankHours:

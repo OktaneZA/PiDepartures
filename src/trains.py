@@ -145,9 +145,8 @@ def ProcessDepartures(journeyConfig, APIOut):
         except (KeyError, TypeError, AttributeError) as exc:
             # C-04 / A-02: malformed individual service must not kill the fetch thread;
             # skip this service and log — ARCH-10: log attempt number, never API key
-            raise ValueError(
-                f"Failed to parse service {servicenum}: {type(exc).__name__}: {exc}"
-            ) from exc
+            logger.warning("Skipping service %d: %s: %s", servicenum, type(exc).__name__, exc)
+            continue
         Departures.append(thisDeparture)
 
     return Departures, departureStationName

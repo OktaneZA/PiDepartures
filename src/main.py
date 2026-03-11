@@ -25,10 +25,11 @@ import time
 from collections import OrderedDict
 from datetime import datetime
 
+import requests
 from PIL import Image, ImageDraw, ImageFont
 
 from config import loadConfig
-from open import isRun
+from hours import isRun
 from trains import loadDeparturesForStation, backoff_delay
 
 # ---------------------------------------------------------------------------
@@ -516,13 +517,12 @@ def _fetch_thread(config: dict) -> None:
         except Exception as exc:
             # A-02: catch ALL exceptions — ValueError (parse), RequestException (network),
             # or anything else — so the fetch thread never dies silently
-            import requests as _req
             with _lock:
                 _fetch_error_count += 1
                 err_count = _fetch_error_count
                 _display_epoch += 1  # trigger viewport rebuild for ARCH-02/03 updates
 
-            log_fn = logger.warning if isinstance(exc, _req.RequestException) else logger.error
+            log_fn = logger.warning if isinstance(exc, requests.RequestException) else logger.error
             # ARCH-10: log station + attempt + error type — never the API key
             log_fn(
                 "Fetch failed for %s (attempt %d, errors %d): %s — retry in %.0fs",

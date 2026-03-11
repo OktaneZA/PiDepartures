@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git clone:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(find /c/Projects/pidepartures/.claude -type f -name *.md -o -name *.json)",
+      "Bash(git rm:*)"
+    ]
+  }
+}

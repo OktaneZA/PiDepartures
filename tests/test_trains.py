@@ -162,6 +162,49 @@ class TestMalformedXML:
             )
 
 
+class TestMalformedService:
+    """C-04 / A-02: a malformed individual service must not discard the whole batch."""
+
+    _TWO_SERVICE_XML = """\
+<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+  <soap:Body>
+    <GetDepBoardWithDetailsResponse>
+      <GetStationBoardResult>
+        <lt4:locationName>London Paddington</lt4:locationName>
+        <lt7:trainServices>
+          <lt7:service>
+            <lt4:std>10:00</lt4:std>
+            <lt4:etd>On time</lt4:etd>
+            <lt4:operator>GWR</lt4:operator>
+            <lt5:destination><lt4:location><lt4:locationName>Oxford</lt4:locationName></lt4:location></lt5:destination>
+          </lt7:service>
+          <lt7:service>
+            <lt4:etd>On time</lt4:etd>
+            <lt4:operator>GWR</lt4:operator>
+            <lt5:destination><lt4:location><lt4:locationName>Bristol</lt4:locationName></lt4:location></lt5:destination>
+          </lt7:service>
+        </lt7:trainServices>
+      </GetStationBoardResult>
+    </GetDepBoardWithDetailsResponse>
+  </soap:Body>
+</soap:Envelope>"""
+
+    def test_valid_service_returned_when_sibling_is_malformed(self):
+        """One service missing lt4:std should be skipped; the valid service is returned."""
+        deps, station = trains.ProcessDepartures(_JOURNEY_CONFIG, self._TWO_SERVICE_XML)
+        assert deps is not None
+        assert len(deps) == 1
+        assert deps[0]["destination_name"] == "Oxford"
+
+    def test_malformed_service_does_not_raise(self):
+        """Processing a batch with one malformed service must not raise."""
+        try:
+            trains.ProcessDepartures(_JOURNEY_CONFIG, self._TWO_SERVICE_XML)
+        except Exception as exc:
+            pytest.fail(f"ProcessDepartures raised unexpectedly: {exc}")
+
+
 # ---------------------------------------------------------------------------
 # Helper function tests
 # ---------------------------------------------------------------------------

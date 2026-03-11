@@ -9,6 +9,7 @@ Requirements: VAL-01 – VAL-10
 import os
 import re
 import sys
+from xml.sax.saxutils import escape as _xml_escape
 
 CONFIG_FILE = os.environ.get("TRAIN_DISPLAY_CONFIG", "/etc/train-display/config")
 _CRS_RE = re.compile(r"^[A-Z]{3}$")
@@ -84,14 +85,14 @@ def main() -> int:
             ' xmlns:ldb="http://thalesgroup.com/RTTI/2017-10-01/ldb/"'
             ' xmlns:typ4="http://thalesgroup.com/RTTI/2013-11-28/Token/types">'
             "<x:Header>"
-            f"<typ4:AccessToken><typ4:TokenValue>{api_key}</typ4:TokenValue></typ4:AccessToken>"
+            f"<typ4:AccessToken><typ4:TokenValue>{_xml_escape(api_key)}</typ4:TokenValue></typ4:AccessToken>"
             "</x:Header>"
             "<x:Body>"
             "<ldb:GetDepBoardWithDetailsRequest>"
             f"<ldb:numRows>{rows}</ldb:numRows>"
-            f"<ldb:crs>{station}</ldb:crs>"
+            f"<ldb:crs>{_xml_escape(station)}</ldb:crs>"
             "<ldb:timeOffset>0</ldb:timeOffset>"
-            f"<ldb:filterCrs>{destination}</ldb:filterCrs>"
+            f"<ldb:filterCrs>{_xml_escape(destination)}</ldb:filterCrs>"
             "<ldb:filterType>to</ldb:filterType>"
             "<ldb:timeWindow>120</ldb:timeWindow>"
             "</ldb:GetDepBoardWithDetailsRequest>"
