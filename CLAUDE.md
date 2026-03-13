@@ -19,6 +19,7 @@ Derived from [chrisys/train-departure-display](https://github.com/chrisys/train-
 │   ├── main.py                 ← Entry point: display loop, threading, SIGTERM handler
 │   ├── trains.py               ← National Rail OpenLDBWS SOAP client
 │   ├── config.py               ← Config loading, validation, defaults
+│   ├── hours.py                ← Blank-hours logic (is_time_between, isRun)
 │   └── fonts/                  ← Dot-matrix bitmap fonts (.ttf)
 │
 ├── tests/
@@ -101,7 +102,7 @@ Expected output: 5 checks, all `[ PASS ]`, followed by the next departure.
 
 ```bash
 # On the Pi, as root:
-curl -fsSL https://raw.githubusercontent.com/YOUR_REPO/main/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/OktaneZA/PiDepartures/main/install.sh | sudo bash
 # Or after cloning:
 sudo bash install.sh
 ```
@@ -123,10 +124,11 @@ journalctl -u train-display -f
 | Component | Status |
 |---|---|
 | REQUIREMENTS.md | Complete |
-| src/config.py | In progress |
-| src/trains.py | In progress |
-| src/main.py | In progress |
-| tests/ | In progress |
-| validate.py | In progress |
+| src/config.py | Complete |
+| src/trains.py | Complete |
+| src/hours.py | Complete |
+| src/main.py | Complete |
+| tests/ | Complete — 100 tests passing |
+| validate.py | Complete |
 | install.sh | In progress |
 | systemd units | In progress |

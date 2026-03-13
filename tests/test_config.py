@@ -5,7 +5,7 @@ import pytest
 
 
 def _load(env_overrides: dict):
-    """Helper: patch os.environ and call loadConfig()."""
+    """Helper: patch os.environ and call load_config()."""
     import importlib
     import sys
 
@@ -32,7 +32,7 @@ def _load(env_overrides: dict):
             os.environ[k] = v
     try:
         import config as cfg_mod
-        return cfg_mod.loadConfig()
+        return cfg_mod.load_config()
     finally:
         for k, old_v in old.items():
             if old_v is None:
@@ -115,7 +115,7 @@ class TestBooleanParsing:
 
 
 class TestCRSFormatValidation:
-    """Q-10: CRS format validated in loadConfig, not just validate.py."""
+    """Q-10: CRS format validated in load_config, not just validate.py."""
 
     def test_invalid_crs_too_long_raises(self):
         with pytest.raises(ValueError, match="CRS"):

@@ -8,6 +8,7 @@ Requirements: ARCH-01, ARCH-10, SEC-01, SEC-06, SEC-07
 
 import logging
 import re
+from xml.parsers.expat import ExpatError as _ExpatError
 from xml.sax.saxutils import escape as _xml_escape
 
 import requests
@@ -23,64 +24,62 @@ BACKOFF_INITIAL = 2
 BACKOFF_MAX = 120
 
 
-def removeBrackets(originalName):
+def removeBrackets(originalName: str) -> str:
     """Strip parenthetical suffixes from station names (e.g. 'Reading (Berks)' → 'Reading')."""
     return re.split(r" \(", originalName)[0]
 
 
-def isTime(value):
+def isTime(value: str) -> bool:
     """Return True if value matches HH:MM format."""
-    return len(re.findall(r"\d{2}:\d{2}", value)) > 0
+    return bool(re.search(r"\d{2}:\d{2}", value))
 
 
-def joinwithCommas(listIN):
+def joinwithCommas(listIN: list) -> str:
     """Join list with commas, replacing the last comma with 'and'."""
     return ", ".join(listIN)[::-1].replace(",", "dna ", 1)[::-1]
 
 
-def removeEmptyStrings(items):
+def removeEmptyStrings(items) -> filter:
     """Filter out falsy/empty strings from an iterable."""
     return filter(None, items)
 
 
-def joinWith(items, joiner: str):
+def joinWith(items, joiner: str) -> str:
     """Join non-empty items with joiner."""
     return joiner.join(removeEmptyStrings(items))
 
 
-def joinWithSpaces(*args):
+def joinWithSpaces(*args) -> str:
     """Join non-empty args with a single space."""
     return joinWith(args, " ")
 
 
-def prepareServiceMessage(operator):
+def prepareServiceMessage(operator: str) -> str:
     """Format 'A/An <Operator> Service' string."""
     article = "An" if operator in ("Elizabeth Line", "Avanti West Coast") else "A"
     return joinWithSpaces(article, operator, "Service")
 
 
-def prepareLocationName(location, show_departure_time):
+def prepareLocationName(location: dict, show_departure_time: bool) -> str:
     """Format a calling-point location name, optionally with departure time."""
     location_name = removeBrackets(location["lt7:locationName"])
     if not show_departure_time:
         return location_name
     scheduled_time = location["lt7:st"]
-    try:
-        expected_time = location.get("lt7:et") or location.get("lt7:at") or scheduled_time
-    except (KeyError, AttributeError):
-        expected_time = scheduled_time  # C-04: neither et nor at present — fall back gracefully
+    # Use actual time if available; fall back to scheduled time if neither et nor at is present
+    expected_time = location.get("lt7:et") or location.get("lt7:at") or scheduled_time
     departure_time = expected_time if isTime(expected_time) else scheduled_time
     return joinWithSpaces(location_name, joinWith(["(", departure_time, ")"], ""))
 
 
-def prepareCarriagesMessage(carriages):
+def prepareCarriagesMessage(carriages: int) -> str:
     """Format 'formed of N coaches.' or empty string if 0."""
     if carriages == 0:
         return ""
     return joinWithSpaces("formed of", carriages, "coaches.")
 
 
-def ArrivalOrder(ServicesIN):
+def ArrivalOrder(ServicesIN: list) -> list:
     """Sort services by scheduled departure time, handling midnight crossover."""
     ServicesOUT = []
     for servicenum, eachService in enumerate(ServicesIN):
@@ -93,7 +92,7 @@ def ArrivalOrder(ServicesIN):
     return sorted(ServicesOUT, key=lambda k: k["sortOrder"])
 
 
-def ProcessDepartures(journeyConfig, APIOut):
+def ProcessDepartures(journeyConfig: dict, APIOut: str) -> tuple:
     """Parse SOAP XML response into a list of departure dicts.
 
     Args:
@@ -110,7 +109,7 @@ def ProcessDepartures(journeyConfig, APIOut):
 
     try:
         APIElements = xmltodict.parse(APIOut)
-    except Exception as exc:
+    except (_ExpatError, ValueError, KeyError) as exc:
         raise ValueError(f"Failed to parse SOAP XML response: {exc}") from exc
 
     try:
@@ -231,7 +230,7 @@ def _parse_service(eachService: dict, show_individual_departure_time: bool) -> d
     return thisDeparture
 
 
-def loadDeparturesForStation(journeyConfig, apiKey, rows):
+def loadDeparturesForStation(journeyConfig: dict, apiKey: str, rows: str) -> tuple:
     """Fetch departures from OpenLDBWS for the configured station.
 
     Args:

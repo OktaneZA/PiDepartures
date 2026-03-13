@@ -238,7 +238,7 @@ Key behaviours:
 | ID | Requirement |
 |---|---|
 | TEST-01 | `tests/` directory at project root; all tests runnable with `pytest` |
-| TEST-02 | `tests/test_trains.py`: mock SOAP XML responses; verify correct parsing of on-time, delayed, cancelled, empty-service, and malformed individual-service responses (malformed service skipped, valid siblings returned) |
+| TEST-02 | `tests/test_trains.py`: mock SOAP XML responses; verify correct parsing of on-time, delayed, cancelled, empty-service, and malformed individual-service responses (malformed service skipped, valid siblings returned); `loadDeparturesForStation` tested with mocked HTTP including timeout, connection error, HTTP error, missing config, and SSL verification |
 | TEST-03 | `tests/test_config.py`: missing required fields raise `ValueError`; defaults applied correctly; CRS validation; blank-hours parsing |
 | TEST-04 | `tests/test_display.py`: calling-point scroll offset logic; bold/normal row selection; blank-hours active/inactive check |
 | TEST-05 | All tests runnable without physical display hardware — luma device mocked via `pytest-mock` |

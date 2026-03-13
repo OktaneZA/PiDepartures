@@ -148,6 +148,7 @@ sudo bash /opt/train-display/update.sh
 ```bash
 pip install -r requirements-dev.txt
 pytest --tb=short -q
+# On Windows: python -m pytest --tb=short -q
 ```
 
 To test against the real API on your dev machine:

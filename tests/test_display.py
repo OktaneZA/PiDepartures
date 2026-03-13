@@ -38,7 +38,10 @@ def _mock_luma():
     sys.modules["luma.core.virtual"].viewport = MagicMock()
     sys.modules["luma.core.virtual"].snapshot = MagicMock()
     sys.modules["luma.core.render"].canvas = MagicMock()
-    sys.modules["luma.core.sprite_system"].framerate_regulator = MagicMock()
+    mock_regulator = MagicMock()
+    mock_regulator.__enter__ = MagicMock(return_value=None)
+    mock_regulator.__exit__ = MagicMock(return_value=False)
+    sys.modules["luma.core.sprite_system"].framerate_regulator = MagicMock(return_value=mock_regulator)
 
 
 _mock_luma()

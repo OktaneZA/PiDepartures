@@ -58,7 +58,7 @@ def _check_config_permissions() -> None:
         pass  # File absent in DEBUG/headless mode — not a fault
 
 
-def loadConfig() -> dict:
+def load_config() -> dict:
     """Load and return the runtime configuration from environment variables.
 
     systemd injects /etc/train-display/config as an EnvironmentFile before

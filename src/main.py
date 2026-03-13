@@ -28,7 +28,7 @@ from datetime import datetime
 import requests
 from PIL import Image, ImageDraw, ImageFont
 
-from config import loadConfig
+from config import load_config
 from hours import isRun
 from trains import loadDeparturesForStation, backoff_delay
 
@@ -62,7 +62,7 @@ _BITMAP_CACHE_MAX = 256
 _bitmapCache: OrderedDict = OrderedDict()
 
 
-def _cachedBitmapText(text: str, font: ImageFont.FreeTypeFont):
+def _cachedBitmapText(text: str, font: ImageFont.FreeTypeFont) -> tuple:
     """Return (width, height, bitmap-Image) for text, using an LRU cache (ARCH-09).
 
     Uses OrderedDict for O(1) move-to-end and eviction instead of O(n) list scan.
@@ -199,8 +199,9 @@ def renderTime(font_hm: ImageFont.FreeTypeFont, font_s: ImageFont.FreeTypeFont):
         w1, _, HMBitmap = _cachedBitmapText(f"{hour}:{minute}", font_hm)
         w2, _, _ = _cachedBitmapText(":00", font_s)
         _, _, SBitmap = _cachedBitmapText(f":{second}", font_s)
-        draw.bitmap(((width - w1 - w2) / 2, 0), HMBitmap, fill="yellow")
-        draw.bitmap((((width - w1 - w2) / 2) + w1, 5), SBitmap, fill="yellow")
+        x = int((width - w1 - w2) / 2)
+        draw.bitmap((x, 0), HMBitmap, fill="yellow")
+        draw.bitmap((x + w1, 5), SBitmap, fill="yellow")
     return drawText
 
 
@@ -514,9 +515,8 @@ def _fetch_thread(config: dict) -> None:
                     break
                 time.sleep(1)
 
-        except Exception as exc:
-            # A-02: catch ALL exceptions — ValueError (parse), RequestException (network),
-            # or anything else — so the fetch thread never dies silently
+        except (requests.RequestException, ValueError) as exc:
+            # A-02: expected failures — network errors and XML/parse errors
             with _lock:
                 _fetch_error_count += 1
                 err_count = _fetch_error_count
@@ -533,6 +533,14 @@ def _fetch_thread(config: dict) -> None:
                 backoff_delay(err_count),
             )
             _shutdown_event.wait(timeout=backoff_delay(err_count))
+        except Exception as exc:
+            # A-02: unexpected failure — log full context and re-raise so the thread
+            # exits visibly rather than looping silently on an unrecoverable error
+            logger.error(
+                "Unexpected error in fetch thread (attempt %d): %s",
+                attempt, type(exc).__name__, exc_info=True,
+            )
+            raise
 
 
 # ---------------------------------------------------------------------------
@@ -578,7 +586,7 @@ def main() -> None:
     logger.info("Starting Train Departure Display v%s", _get_version())
 
     try:
-        config = loadConfig()
+        config = load_config()
     except ValueError as exc:
         logger.error("Configuration error: %s", exc)
         sys.exit(1)  # ARCH-06

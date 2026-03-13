@@ -6,12 +6,14 @@ All tests use mock SOAP XML responses; no network calls are made.
 import os
 import sys
 import pytest
+from unittest.mock import MagicMock, patch
 
 # Add src/ to path
 _SRC = os.path.join(os.path.dirname(__file__), "..", "src")
 if _SRC not in sys.path:
     sys.path.insert(0, _SRC)
 
+import requests
 import trains
 
 
@@ -392,3 +394,64 @@ class TestMultiSectionCallingPoints:
         deps, _ = trains.ProcessDepartures(_JOURNEY_CONFIG, self._SPLIT_TRAIN_XML)
         calling = deps[0]["calling_at_list"]
         assert "with a portion going to" in calling
+
+
+# ---------------------------------------------------------------------------
+# loadDeparturesForStation tests — TEST-02 extension
+# ---------------------------------------------------------------------------
+
+class TestLoadDeparturesForStation:
+    """Tests for the public entry point that makes real HTTP calls (mocked here)."""
+
+    def _mock_response(self, xml: str) -> MagicMock:
+        mock_resp = MagicMock()
+        mock_resp.text = xml
+        mock_resp.raise_for_status = MagicMock()
+        return mock_resp
+
+    def test_valid_call_returns_tuple(self):
+        xml = _build_xml()
+        with patch("requests.post", return_value=self._mock_response(xml)):
+            deps, station = trains.loadDeparturesForStation(_JOURNEY_CONFIG, "test-key", "10")
+        assert isinstance(deps, list)
+        assert isinstance(station, str)
+
+    def test_station_name_returned(self):
+        xml = _build_xml()
+        with patch("requests.post", return_value=self._mock_response(xml)):
+            _, station = trains.loadDeparturesForStation(_JOURNEY_CONFIG, "test-key", "10")
+        assert station == "London Paddington"
+
+    def test_network_timeout_propagates(self):
+        with patch("requests.post", side_effect=requests.Timeout()):
+            with pytest.raises(requests.Timeout):
+                trains.loadDeparturesForStation(_JOURNEY_CONFIG, "test-key", "10")
+
+    def test_connection_error_propagates(self):
+        with patch("requests.post", side_effect=requests.ConnectionError()):
+            with pytest.raises(requests.ConnectionError):
+                trains.loadDeparturesForStation(_JOURNEY_CONFIG, "test-key", "10")
+
+    def test_missing_station_raises_value_error(self):
+        bad_config = {**_JOURNEY_CONFIG, "departureStation": ""}
+        with pytest.raises(ValueError, match="departureStation"):
+            trains.loadDeparturesForStation(bad_config, "test-key", "10")
+
+    def test_missing_api_key_raises_value_error(self):
+        with pytest.raises(ValueError, match="apiKey"):
+            trains.loadDeparturesForStation(_JOURNEY_CONFIG, "", "10")
+
+    def test_ssl_verification_enabled(self):
+        """SEC-07: verify=True must always be passed to requests.post."""
+        xml = _build_xml()
+        with patch("requests.post", return_value=self._mock_response(xml)) as mock_post:
+            trains.loadDeparturesForStation(_JOURNEY_CONFIG, "test-key", "10")
+        _, kwargs = mock_post.call_args
+        assert kwargs.get("verify") is True
+
+    def test_http_error_propagates(self):
+        mock_resp = self._mock_response("")
+        mock_resp.raise_for_status.side_effect = requests.HTTPError("503")
+        with patch("requests.post", return_value=mock_resp):
+            with pytest.raises(requests.HTTPError):
+                trains.loadDeparturesForStation(_JOURNEY_CONFIG, "test-key", "10")
