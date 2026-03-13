@@ -23,7 +23,7 @@ This project is derived from [chrisys/train-departure-display](https://github.co
 | **Display** | SSD1322 256×64 OLED, SPI interface (e.g. DIYTZT 3.12" 256×64 module) |
 | **Display interface** | 7-pin SPI: VCC, GND, DIN (MOSI), CLK (SCLK), CS (CE0), DC, RST |
 | **Storage** | SD card ≥ 8 GB |
-| **OS** | Raspberry Pi OS Lite (32-bit, Bullseye or Bookworm) |
+| **OS** | Raspberry Pi OS Lite (Bullseye or Bookworm); 32-bit for Zero W, 32 or 64-bit for Zero 2W |
 | **Network** | Wi-Fi or Ethernet (required for API access) |
 
 ### SSD1322 GPIO Wiring (Pi Zero W)

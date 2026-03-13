@@ -4,7 +4,7 @@
 
 - Raspberry Pi Zero W (or Zero 2W, 3B, 3B+, 4)
 - SSD1322 256×64 OLED display (7-pin SPI, e.g. DIYTZT 3.12" module)
-- SD card ≥ 8 GB with Raspberry Pi OS Lite (Bullseye or Bookworm, 32-bit)
+- SD card ≥ 8 GB with Raspberry Pi OS Lite (Bullseye or Bookworm); 32-bit for Zero W, 32 or 64-bit for Zero 2W
 - National Rail OpenLDBWS API key — [register here](https://realtime.nationalrail.co.uk/OpenLDBWSRegistration) (allow 2–4 weeks)
 
 ---
@@ -28,7 +28,7 @@
 
 ### 1. Flash OS
 
-Flash Raspberry Pi OS Lite (32-bit) to an SD card using [Raspberry Pi Imager](https://www.raspberrypi.com/software/). Enable SSH and configure Wi-Fi in the imager before flashing.
+Flash Raspberry Pi OS Lite to an SD card using [Raspberry Pi Imager](https://www.raspberrypi.com/software/). Choose 32-bit for the Zero W; either 32 or 64-bit works on the Zero 2W. Enable SSH and configure Wi-Fi in the imager before flashing.
 
 ### 2. Boot and connect
 

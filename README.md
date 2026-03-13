@@ -19,7 +19,7 @@ Based on [chrisys/train-departure-display](https://github.com/chrisys/train-depa
 |---|---|
 | Pi | Raspberry Pi Zero W (or Zero 2W, 3B, 3B+, 4) |
 | Display | SSD1322 256×64 OLED, 7-pin SPI (e.g. DIYTZT 3.12" module) |
-| OS | Raspberry Pi OS Lite (Bullseye or Bookworm, 32-bit) |
+| OS | Raspberry Pi OS Lite (Bullseye or Bookworm); 32-bit for Zero W, 32 or 64-bit for Zero 2W |
 
 ### GPIO Wiring
 
@@ -40,7 +40,7 @@ Based on [chrisys/train-departure-display](https://github.com/chrisys/train-depa
 ### Step 1 — Flash the SD card
 
 1. Download [Raspberry Pi Imager](https://www.raspberrypi.com/software/) on your computer
-2. Choose **Raspberry Pi OS Lite (32-bit)**
+2. Choose **Raspberry Pi OS Lite** — 32-bit for Zero W; either 32 or 64-bit for Zero 2W
 3. Click the **gear icon** before flashing:
    - Enable SSH
    - Set username/password
