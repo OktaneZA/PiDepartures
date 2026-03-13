@@ -119,6 +119,7 @@ sudo bash /opt/train-display/install.sh
 | `DUAL_SCREEN` | No | `false` | Second SSD1322 on CE1 |
 | `FIRST_DEPARTURE_BOLD` | No | `true` | Render first departure in bold |
 | `SHOW_DEPARTURE_NUMBERS` | No | `false` | Show departure index (1, 2, 3) |
+| `INDIVIDUAL_STATION_DEPARTURE_TIME` | No | `false` | Show per-stop departure times in calling points |
 
 ---
 

@@ -156,11 +156,23 @@ def render(departures: list, station_name: str = "Sample Station") -> Image.Imag
         _paste_text(draw, row, font, 0, y)
         _paste_text(draw, status2, font, 0, y, right_align_width=WIDTH)
 
-    # Bottom row: clock
+    # Bottom row: time then date, centred as a group — DISP-09
     from datetime import datetime
-    t = datetime.now().strftime("%H:%M")
-    _, _, tw, _ = font_large.getbbox(t)
-    _paste_text(draw, t, font_large, (WIDTH - tw) // 2, 50)
+    from main import _ordinal_date
+
+    now = datetime.now()
+    date_str = _ordinal_date(now)
+    t = now.strftime("%H:%M")
+
+    tl, tt, tr, tb = font_large.getbbox(t)
+    dl, dt, dr, db = font.getbbox(date_str)
+    tw, th = tr - tl, tb - tt
+    dw, dh = dr - dl, db - dt
+    gap = 6
+    total_w = tw + gap + dw
+    x = (WIDTH - total_w) // 2
+    _paste_text(draw, t, font_large, x, 50)
+    _paste_text(draw, date_str, font, x + tw + gap, 50 + (th - dh) // 2)
 
     return img
 

@@ -5,7 +5,7 @@ luma display hardware is mocked; no physical device needed (TEST-05).
 
 import os
 import sys
-from datetime import time
+from datetime import time, datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -289,3 +289,54 @@ class TestPlatformFilterRegex:
         deps, _, _ = main_mod.platform_filter(_SAMPLE_DEPARTURES, "^2$", "PAD")
         assert len(deps) == 1
         assert deps[0]["destination_name"] == "Bristol"
+
+
+# ---------------------------------------------------------------------------
+# Ordinal date helper tests — TEST-08 (DISP-09)
+# ---------------------------------------------------------------------------
+
+class TestOrdinalDate:
+    """Verify _ordinal_date formats dates correctly including edge cases."""
+
+    def test_1st(self):
+        assert "1st" in main_mod._ordinal_date(datetime(2026, 3, 1))
+
+    def test_2nd(self):
+        assert "2nd" in main_mod._ordinal_date(datetime(2026, 3, 2))
+
+    def test_3rd(self):
+        assert "3rd" in main_mod._ordinal_date(datetime(2026, 3, 3))
+
+    def test_4th(self):
+        assert "4th" in main_mod._ordinal_date(datetime(2026, 3, 4))
+
+    def test_11th_special_case(self):
+        """11 ends in 1 but must be 'th' not 'st'."""
+        assert "11th" in main_mod._ordinal_date(datetime(2026, 3, 11))
+
+    def test_12th_special_case(self):
+        """12 ends in 2 but must be 'th' not 'nd'."""
+        assert "12th" in main_mod._ordinal_date(datetime(2026, 3, 12))
+
+    def test_13th_special_case(self):
+        """13 ends in 3 but must be 'th' not 'rd'."""
+        assert "13th" in main_mod._ordinal_date(datetime(2026, 3, 13))
+
+    def test_21st(self):
+        assert "21st" in main_mod._ordinal_date(datetime(2026, 3, 21))
+
+    def test_22nd(self):
+        assert "22nd" in main_mod._ordinal_date(datetime(2026, 3, 22))
+
+    def test_23rd(self):
+        assert "23rd" in main_mod._ordinal_date(datetime(2026, 3, 23))
+
+    def test_full_format(self):
+        """DISP-09: full format must be 'Ddd DDth Month'."""
+        assert main_mod._ordinal_date(datetime(2026, 3, 13)) == "Fri 13th March"
+
+    def test_day_name_included(self):
+        assert main_mod._ordinal_date(datetime(2026, 3, 13)).startswith("Fri")
+
+    def test_month_name_included(self):
+        assert "March" in main_mod._ordinal_date(datetime(2026, 3, 13))

@@ -110,6 +110,7 @@ Configuration is stored in `/etc/train-display/config`, owned by `root:train-dis
 | DISP-06 | Attribution/loading screen displayed on startup while initial data is fetched |
 | DISP-07 | First departure rendered in bold when `FIRST_DEPARTURE_BOLD=true` |
 | DISP-08 | Dual screen mode: second SSD1322 shows departures filtered by `SCREEN2_PLATFORM` |
+| DISP-09 | Bottom row shows current date (left, regular font, format `Ddd DDth Month` e.g. `Fri 13th March`) and current time (right, large bold font, `HH:MM`); date and time update every render cycle |
 
 ---
 
@@ -244,6 +245,7 @@ Key behaviours:
 | TEST-05 | All tests runnable without physical display hardware — luma device mocked via `pytest-mock` |
 | TEST-06 | `requirements-dev.txt` lists `pytest` and `pytest-mock` as dev-only dependencies |
 | TEST-07 | `pytest --tb=short -q` exits non-zero on any failure (CI-friendly) |
+| TEST-08 | `tests/test_display.py`: ordinal date suffix helper tested for 1st/2nd/3rd/4th, 11th/12th/13th (special cases), 21st/22nd/23rd boundary values |
 
 ---
 

@@ -191,17 +191,25 @@ def renderStations(stations: str, font: ImageFont.FreeTypeFont, screen_id: str =
     return drawText
 
 
-def renderTime(font_hm: ImageFont.FreeTypeFont, font_s: ImageFont.FreeTypeFont):
-    """Return a draw callback that renders HH:MM:SS clock."""
+def renderTime(font_hm: ImageFont.FreeTypeFont, font_s: ImageFont.FreeTypeFont,
+               font_date: ImageFont.FreeTypeFont):
+    """Return a draw callback that renders time then date, centred as a group (DISP-09)."""
     def drawText(draw, width, *_):
-        rawTime = datetime.now().time()
+        now = datetime.now()
+        rawTime = now.time()
         hour, minute, second = str(rawTime).split(".")[0].split(":")
-        w1, _, HMBitmap = _cachedBitmapText(f"{hour}:{minute}", font_hm)
+        w1, clock_h, HMBitmap = _cachedBitmapText(f"{hour}:{minute}", font_hm)
         w2, _, _ = _cachedBitmapText(":00", font_s)
         _, _, SBitmap = _cachedBitmapText(f":{second}", font_s)
-        x = int((width - w1 - w2) / 2)
+        date_str = _ordinal_date(now)
+        w_date, date_h, DateBitmap = _cachedBitmapText(date_str, font_date)
+        gap = 6  # pixels between time and date
+        total_w = w1 + w2 + gap + w_date
+        x = int((width - total_w) / 2)
         draw.bitmap((x, 0), HMBitmap, fill="yellow")
         draw.bitmap((x + w1, 5), SBitmap, fill="yellow")
+        date_y = (clock_h - date_h) // 2
+        draw.bitmap((x + w1 + w2 + gap, date_y), DateBitmap, fill="yellow")
     return drawText
 
 
@@ -316,7 +324,7 @@ def drawBlankSignage(device, fonts: dict, width: int, height: int,
                       renderDepartureStation(departureStation, fontBold, (width - stationSize) / 2),
                       interval=refresh)
     rowThree = snapshot(width, 10, renderDots(fontBold), interval=refresh)
-    rowTime = snapshot(width, 14, renderTime(fontBoldLarge, fontBoldTall), interval=0.1)
+    rowTime = snapshot(width, 14, renderTime(fontBoldLarge, fontBoldTall, fonts["regular"]), interval=0.1)
 
     for hotspot, xy in list(virtualViewport._hotspots):
         virtualViewport.remove_hotspot(hotspot, xy)
@@ -349,7 +357,7 @@ def drawConnectivityWarning(device, fonts: dict, width: int, height: int,
                           renderDepartureStation(departureStation, fontBold, (width - stationSize) / 2),
                           interval=refresh)
     rowWarning = snapshot(width, 10, renderConnectivityWarning(font, error_count), interval=5)
-    rowTime = snapshot(width, 14, renderTime(fontBoldLarge, fontBoldTall), interval=0.1)
+    rowTime = snapshot(width, 14, renderTime(fontBoldLarge, fontBoldTall, fonts["regular"]), interval=0.1)
 
     for hotspot, xy in list(virtualViewport._hotspots):
         virtualViewport.remove_hotspot(hotspot, xy)
@@ -461,7 +469,7 @@ def drawSignage(device, fonts: dict, width: int, height: int, data: tuple,
         virtualViewport.add_hotspot(rowFourB, (vp_width - w_status, 36))
         virtualViewport.add_hotspot(rowFourC, (vp_width - w_status - w_platform, 36))
 
-    rowTime = snapshot(vp_width, 14, renderTime(fontBoldLarge, fontBoldTall), interval=0.1)
+    rowTime = snapshot(vp_width, 14, renderTime(fontBoldLarge, fontBoldTall, fonts["regular"]), interval=0.1)
     virtualViewport.add_hotspot(rowTime, (0, 50))
 
     # ARCH-02: overlay "No signal" indicator when API is failing but stale data is displayed
@@ -563,6 +571,13 @@ def _get_version() -> str:
             return f.read().strip()
     except OSError:
         return "unknown"
+
+
+def _ordinal_date(dt: datetime) -> str:
+    """Return date string in 'Ddd DDth Month' format e.g. 'Fri 13th March' (DISP-09)."""
+    n = dt.day
+    suffix = "th" if 11 <= n % 100 <= 13 else {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
+    return dt.strftime("%a ") + f"{n}{suffix}" + dt.strftime(" %B")
 
 
 def _err_band(err_count: int) -> int:

@@ -128,7 +128,7 @@ journalctl -u train-display -f
 | src/trains.py | Complete |
 | src/hours.py | Complete |
 | src/main.py | Complete |
-| tests/ | Complete — 100 tests passing |
+| tests/ | Complete — 100 tests passing (TEST-08 pending DISP-09 implementation) |
 | validate.py | Complete |
 | install.sh | In progress |
 | systemd units | In progress |
