@@ -40,22 +40,27 @@ Based on [chrisys/train-departure-display](https://github.com/chrisys/train-depa
 ### Step 1 — Flash the SD card
 
 1. Download [Raspberry Pi Imager](https://www.raspberrypi.com/software/) on your computer
-2. Choose **Raspberry Pi OS Lite** — 32-bit for Zero W; either 32 or 64-bit for Zero 2W
+2. Choose **Raspberry Pi OS Lite (Bookworm)** — 32-bit for Zero W; either 32 or 64-bit for Zero 2W
 3. Click the **gear icon** before flashing:
-   - Enable SSH
    - Set username/password
    - Configure your Wi-Fi (SSID + password)
 4. Flash to SD card, insert into Pi, power on
 
-### Step 2 — SSH into the Pi
+### Step 2 — Connect via Raspberry Pi Connect
 
-Wait ~60 seconds after power-on, then:
+[Raspberry Pi Connect](https://connect.raspberrypi.com) lets you access a remote shell in your browser — no IP address or SSH client needed.
 
-```bash
-ssh pi@raspberrypi.local
-```
+1. Create a free account at [connect.raspberrypi.com](https://connect.raspberrypi.com)
+2. Wait ~60 seconds after power-on for the Pi to boot
+3. On the Pi (first boot only — connect a keyboard/monitor, or use SSH once to run these):
+   ```bash
+   sudo apt update && sudo apt install -y rpi-connect-lite
+   rpi-connect signin
+   ```
+   Follow the link printed in the terminal to authorise the device in your browser
+4. Visit [connect.raspberrypi.com](https://connect.raspberrypi.com) → your device → **Remote shell**
 
-> If `raspberrypi.local` doesn't resolve, find the IP from your router's device list and use that instead.
+> **Note:** Screen sharing requires a Pi 4 or newer with a desktop environment. The Zero 2W supports remote shell only via Raspberry Pi Connect.
 
 ### Step 3 — Create a GitHub personal access token
 
@@ -140,7 +145,8 @@ sudo bash /opt/train-display/update.sh
 | `API_KEY is required` | Edit `/etc/train-display/config` and set `API_KEY=...` |
 | No departures shown | Run `validate.py` to check API connectivity |
 | Service not starting | `journalctl -u train-display -n 50` for full error log |
-| `raspberrypi.local` not found | Use the Pi's IP address directly instead |
+| `raspberrypi.local` not found | Use the Pi's IP address directly, or use Raspberry Pi Connect remote shell |
+| Pi not appearing in Connect | Ensure `rpi-connect-lite` is installed and `rpi-connect signin` has been run |
 
 ---
 

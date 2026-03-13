@@ -4,7 +4,7 @@
 
 - Raspberry Pi Zero W (or Zero 2W, 3B, 3B+, 4)
 - SSD1322 256×64 OLED display (7-pin SPI, e.g. DIYTZT 3.12" module)
-- SD card ≥ 8 GB with Raspberry Pi OS Lite (Bullseye or Bookworm); 32-bit for Zero W, 32 or 64-bit for Zero 2W
+- SD card ≥ 8 GB with Raspberry Pi OS Lite **(Bookworm)**; 32-bit for Zero W, 32 or 64-bit for Zero 2W
 - National Rail OpenLDBWS API key — [register here](https://realtime.nationalrail.co.uk/OpenLDBWSRegistration) (allow 2–4 weeks)
 
 ---
@@ -28,15 +28,24 @@
 
 ### 1. Flash OS
 
-Flash Raspberry Pi OS Lite to an SD card using [Raspberry Pi Imager](https://www.raspberrypi.com/software/). Choose 32-bit for the Zero W; either 32 or 64-bit works on the Zero 2W. Enable SSH and configure Wi-Fi in the imager before flashing.
+Flash **Raspberry Pi OS Lite (Bookworm)** to an SD card using [Raspberry Pi Imager](https://www.raspberrypi.com/software/). Choose 32-bit for the Zero W; either 32 or 64-bit works on the Zero 2W. Set your username/password and configure Wi-Fi in the imager before flashing.
 
-### 2. Boot and connect
+> Bookworm is required for Raspberry Pi Connect support.
 
-Insert SD card, power on, wait ~60 seconds, then SSH in:
+### 2. Boot and connect via Raspberry Pi Connect
 
-```bash
-ssh pi@raspberrypi.local
-```
+[Raspberry Pi Connect](https://connect.raspberrypi.com) provides browser-based remote shell access — no SSH client or IP address needed.
+
+1. Insert SD card and power on — wait ~60 seconds to boot
+2. On first boot, connect a keyboard and monitor (or use SSH once) and run:
+   ```bash
+   sudo apt update && sudo apt install -y rpi-connect-lite
+   rpi-connect signin
+   ```
+3. Follow the link in the terminal to authorise the device at [connect.raspberrypi.com](https://connect.raspberrypi.com)
+4. Open your browser → [connect.raspberrypi.com](https://connect.raspberrypi.com) → your device → **Remote shell**
+
+> **Note:** Screen sharing requires a Pi 4 or newer with a desktop environment. The Zero 2W supports remote shell only.
 
 ### 3. Clone and run installer
 
@@ -119,3 +128,5 @@ sudo systemctl disable --now train-display-reboot.timer
 | `API_KEY is required` | Edit `/etc/train-display/config` and set `API_KEY=...` |
 | No departures shown | Run `validate.py` to check API connectivity |
 | Service not starting | `journalctl -u train-display -n 50` for full error log |
+| Pi not appearing in Connect | Ensure `rpi-connect-lite` is installed and `rpi-connect signin` has been run |
+| Connect signin link expired | Run `rpi-connect signin` again to generate a new link |
