@@ -15,6 +15,7 @@ SERVICE_NAME="train-display"
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
 TIMER_FILE="/etc/systemd/system/${SERVICE_NAME}-reboot.timer"
 TIMER_UNIT="/etc/systemd/system/${SERVICE_NAME}-reboot.target.service"
+LOGFILE="/var/log/train-display-install.log"
 
 # Colours
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; NC='\033[0m'
@@ -23,6 +24,13 @@ info()    { echo -e "${GREEN}[INFO]${NC} $*"; }
 warn()    { echo -e "${YELLOW}[WARN]${NC} $*"; }
 error()   { echo -e "${RED}[ERROR]${NC} $*" >&2; exit 1; }
 confirm() { read -r -p "$1 [y/N] " ans; [[ "${ans,,}" == "y" ]]; }
+
+# Log all output to file and stdout simultaneously
+exec > >(tee -a "${LOGFILE}") 2>&1
+info "Logging to ${LOGFILE}"
+
+# Error trap — print line number so failures are easy to locate in the log
+trap 'echo -e "${RED}[ERROR]${NC} Install failed at line ${LINENO} (exit code $?). Full log: ${LOGFILE}" >&2' ERR
 
 # ---------------------------------------------------------------------------
 # INST-01: Must run on a Raspberry Pi
@@ -74,19 +82,24 @@ fi
 # ---------------------------------------------------------------------------
 if [[ -d "${INSTALL_DIR}/.git" ]]; then
     info "Updating existing installation..."
-    git -C "${INSTALL_DIR}" pull --ff-only
+    git -C "${INSTALL_DIR}" pull --ff-only || error "git pull failed — check network and try again"
 else
     info "Cloning repository to ${INSTALL_DIR}..."
-    git clone "${REPO_URL}" "${INSTALL_DIR}"
+    git clone "${REPO_URL}" "${INSTALL_DIR}" || error "git clone failed — check network and repository URL"
 fi
 
 # ---------------------------------------------------------------------------
 # INST-05: Create venv and install dependencies
 # ---------------------------------------------------------------------------
 info "Setting up Python virtual environment..."
-python3 -m venv "${INSTALL_DIR}/.venv"
-"${INSTALL_DIR}/.venv/bin/pip" install --quiet --upgrade pip
-"${INSTALL_DIR}/.venv/bin/pip" install --quiet -r "${INSTALL_DIR}/requirements.txt"
+python3 -m venv "${INSTALL_DIR}/.venv" || error "Failed to create virtual environment"
+
+info "Upgrading pip..."
+"${INSTALL_DIR}/.venv/bin/pip" install --upgrade pip || error "pip upgrade failed"
+
+info "Installing Python dependencies (this may take a few minutes)..."
+"${INSTALL_DIR}/.venv/bin/pip" install -r "${INSTALL_DIR}/requirements.txt" 2>&1 \
+    || error "pip install failed — check ${LOGFILE} for details"
 info "Python dependencies installed"
 
 # ---------------------------------------------------------------------------
@@ -258,6 +271,7 @@ else
     echo "               (password protected — username: admin)"
 fi
 echo ""
-echo "  Logs:        journalctl -u ${SERVICE_NAME} -f"
-echo "  Update:      sudo bash ${INSTALL_DIR}/update.sh"
-echo "  Reconfigure: sudo bash ${INSTALL_DIR}/install.sh"
+echo "  Service logs: journalctl -u ${SERVICE_NAME} -f"
+echo "  Install log:  ${LOGFILE}"
+echo "  Update:       sudo bash ${INSTALL_DIR}/update.sh"
+echo "  Reconfigure:  sudo bash ${INSTALL_DIR}/install.sh"
