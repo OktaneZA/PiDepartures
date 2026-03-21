@@ -247,7 +247,6 @@ if [[ "${ENABLE_TIMER}" == "true" ]]; then
     cp "${INSTALL_DIR}/systemd/train-display-reboot.target.service" "${TIMER_UNIT}" 2>/dev/null || true
     systemctl daemon-reload
     systemctl enable train-display-reboot.timer
-    systemctl start train-display-reboot.timer
 fi
 
 # ---------------------------------------------------------------------------

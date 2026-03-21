@@ -6,7 +6,6 @@ Requires=train-display-reboot.target.service
 # Default: every Sunday at 03:00 local time
 # Change via install.sh or edit OnCalendar directly
 OnCalendar=Sun *-*-* 03:00:00
-Persistent=true
 
 [Install]
 WantedBy=timers.target
