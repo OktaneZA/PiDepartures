@@ -239,38 +239,60 @@ if [[ "${ENABLE_TIMER}" == "true" ]]; then
 fi
 
 # ---------------------------------------------------------------------------
-# INST-14: Start service
+# INST-14: Validate before starting (service does NOT auto-start)
 # ---------------------------------------------------------------------------
-info "Starting ${SERVICE_NAME} service..."
-systemctl restart "${SERVICE_NAME}"
-sleep 3
-systemctl --no-pager status "${SERVICE_NAME}" || true
-
-# ---------------------------------------------------------------------------
-# INST-15: Offer to run validator
-# ---------------------------------------------------------------------------
-if confirm "Run validate.py to confirm API connectivity?"; then
-    "${INSTALL_DIR}/.venv/bin/python" "${INSTALL_DIR}/validate.py" || true
+info "Service installed and enabled for boot — NOT started yet."
+info "Running validate.py to check config and API connectivity before starting..."
+echo ""
+if "${INSTALL_DIR}/.venv/bin/python" "${INSTALL_DIR}/validate.py"; then
+    echo ""
+    info "All checks passed."
+    if confirm "Start the service now?"; then
+        info "Starting ${SERVICE_NAME}..."
+        systemctl start "${SERVICE_NAME}"
+        sleep 3
+        if systemctl --no-pager is-active "${SERVICE_NAME}" &>/dev/null; then
+            info "${SERVICE_NAME} is running."
+        else
+            warn "${SERVICE_NAME} failed to start. Check logs:"
+            warn "  journalctl -u ${SERVICE_NAME} -n 30 --no-pager"
+            warn "  Full install log: ${LOGFILE}"
+        fi
+    else
+        info "Service not started. Start it manually once you are ready:"
+        echo "    sudo systemctl start ${SERVICE_NAME}"
+    fi
+else
+    echo ""
+    warn "Validation failed — service has NOT been started."
+    warn "Fix the issues above, then start the service with:"
+    warn "    sudo systemctl start ${SERVICE_NAME}"
+    warn "Full install log: ${LOGFILE}"
 fi
 
 # ---------------------------------------------------------------------------
-# INST-16: Post-install summary
+# INST-15: Post-install summary
 # ---------------------------------------------------------------------------
 PI_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
+SERVICE_STATUS=$(systemctl is-active "${SERVICE_NAME}" 2>/dev/null || echo "inactive")
 
 echo ""
 info "=== Installation Complete ==="
-echo "  Station:     ${DEPARTURE_STATION}"
-[[ -n "${DESTINATION_STATION}" ]] && echo "  Destination: ${DESTINATION_STATION}"
-echo "  Service:     ${SERVICE_NAME} (enabled, started)"
+echo "  Station:      ${DEPARTURE_STATION}"
+[[ -n "${DESTINATION_STATION}" ]] && echo "  Destination:  ${DESTINATION_STATION}"
+echo "  Service:      ${SERVICE_NAME} (enabled on boot, currently ${SERVICE_STATUS})"
 echo ""
-echo "  Web portal:  http://${PI_IP:-<pi-ip>}:${PORTAL_PORT}"
+echo "  Web portal:   http://${PI_IP:-<pi-ip>}:${PORTAL_PORT}"
 if [[ -z "${PORTAL_PASSWORD}" ]]; then
-    echo "               (local access only — no password set)"
+    echo "                (local access only — no password set)"
 else
-    echo "               (password protected — username: admin)"
+    echo "                (password protected — username: admin)"
 fi
 echo ""
+echo "  Start:        sudo systemctl start ${SERVICE_NAME}"
+echo "  Stop:         sudo systemctl stop ${SERVICE_NAME}"
+echo "  Disable boot: sudo systemctl disable ${SERVICE_NAME}"
+echo "  Re-enable:    sudo systemctl enable ${SERVICE_NAME}"
 echo "  Service logs: journalctl -u ${SERVICE_NAME} -f"
 echo "  Install log:  ${LOGFILE}"
 echo "  Update:       sudo bash ${INSTALL_DIR}/update.sh"
