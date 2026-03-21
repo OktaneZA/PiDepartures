@@ -139,6 +139,20 @@ if [[ -n "${SCREEN_BLANK_HOURS}" ]] && ! [[ "${SCREEN_BLANK_HOURS}" =~ ^[0-9]{1,
     SCREEN_BLANK_HOURS=""
 fi
 
+# Optional: portal password (leave blank for local-only access)
+echo ""
+echo "  Web portal runs on port 8080 and lets you change settings via a browser."
+echo "  Leave password blank to allow access from localhost only (recommended for LAN use)."
+echo "  Set a password to enable remote access via HTTP Basic Auth."
+echo -n "  Portal password (leave blank for local-only): "
+read -rs PORTAL_PASSWORD
+echo
+PORTAL_PORT=8080
+if [[ -n "${PORTAL_PASSWORD}" ]]; then
+    read -r -p "  Portal port [8080]: " PORTAL_PORT_INPUT
+    [[ -n "${PORTAL_PORT_INPUT}" ]] && PORTAL_PORT="${PORTAL_PORT_INPUT}"
+fi
+
 # Optional: weekly reboot timer — INST-11
 ENABLE_TIMER=false
 REBOOT_TIME="Sun 03:00"
@@ -167,14 +181,26 @@ EOF
 [[ -n "${PLATFORM_FILTER}" ]] && echo "PLATFORM_FILTER=${PLATFORM_FILTER}" >> "${CONFIG_FILE}"
 [[ -n "${SCREEN_BLANK_HOURS}" ]] && echo "SCREEN_BLANK_HOURS=${SCREEN_BLANK_HOURS}" >> "${CONFIG_FILE}"
 
-cat >> "${CONFIG_FILE}" <<'EOF'
+cat >> "${CONFIG_FILE}" <<EOF
 
 REFRESH_TIME=120
 SCREEN_ROTATION=2
 FIRST_DEPARTURE_BOLD=true
 SHOW_DEPARTURE_NUMBERS=false
 DUAL_SCREEN=false
+PORTAL_PORT=${PORTAL_PORT}
 EOF
+
+# Hash and write portal password if set (SEC-08)
+if [[ -n "${PORTAL_PASSWORD}" ]]; then
+    HASHED_PW=$(python3 -c "
+import base64, hashlib, secrets
+salt = secrets.token_hex(16)
+dk = hashlib.pbkdf2_hmac('sha256', '${PORTAL_PASSWORD}'.encode(), bytes.fromhex(salt), 260000)
+print(f'pbkdf2:sha256:260000:{salt}:{base64.b64encode(dk).decode()}')
+")
+    echo "PORTAL_PASSWORD=${HASHED_PW}" >> "${CONFIG_FILE}"
+fi
 
 chown root:train-display "${CONFIG_FILE}"
 chmod 640 "${CONFIG_FILE}"  # SEC-02
@@ -217,11 +243,21 @@ fi
 # ---------------------------------------------------------------------------
 # INST-16: Post-install summary
 # ---------------------------------------------------------------------------
+PI_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
+
 echo ""
 info "=== Installation Complete ==="
-echo "  Station:    ${DEPARTURE_STATION}"
+echo "  Station:     ${DEPARTURE_STATION}"
 [[ -n "${DESTINATION_STATION}" ]] && echo "  Destination: ${DESTINATION_STATION}"
-echo "  Service:    ${SERVICE_NAME} (enabled, started)"
-echo "  Logs:       journalctl -u ${SERVICE_NAME} -f"
-echo "  Update:     sudo bash ${INSTALL_DIR}/update.sh"
+echo "  Service:     ${SERVICE_NAME} (enabled, started)"
+echo ""
+echo "  Web portal:  http://${PI_IP:-<pi-ip>}:${PORTAL_PORT}"
+if [[ -z "${PORTAL_PASSWORD}" ]]; then
+    echo "               (local access only — no password set)"
+else
+    echo "               (password protected — username: admin)"
+fi
+echo ""
+echo "  Logs:        journalctl -u ${SERVICE_NAME} -f"
+echo "  Update:      sudo bash ${INSTALL_DIR}/update.sh"
 echo "  Reconfigure: sudo bash ${INSTALL_DIR}/install.sh"

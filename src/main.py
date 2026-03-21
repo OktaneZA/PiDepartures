@@ -30,6 +30,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 from config import load_config
 from hours import isRun
+from portal import create_app
 from trains import loadDeparturesForStation, backoff_delay
 
 # ---------------------------------------------------------------------------
@@ -54,6 +55,11 @@ _fetch_error_count = 0      # consecutive failure counter
 _display_epoch = 0          # incremented by fetch thread on every state change;
                             # render thread uses this to detect when to rebuild viewport
 _shutdown_event = threading.Event()  # ARCH-08
+_restart_event = threading.Event()   # set by portal after config save — triggers sys.exit for systemd restart
+
+# Shared state for the web portal (updated by fetch thread)
+_portal_state: dict = {"station_name": "", "departures": [], "error_count": 0}
+_portal_lock = threading.Lock()
 
 # ---------------------------------------------------------------------------
 # Bitmap render cache — bounded LRU via OrderedDict for O(1) eviction (ARCH-09, P-02)
@@ -495,7 +501,7 @@ def _fetch_thread(config: dict) -> None:
     Args:
         config: Loaded config dict.
     """
-    global _departures, _station_name, _fetch_error_count, _display_epoch
+    global _departures, _station_name, _fetch_error_count, _display_epoch, _portal_state
 
     journey = config["journey"]
     api = config["api"]
@@ -511,6 +517,13 @@ def _fetch_thread(config: dict) -> None:
                 _station_name = station_name
                 _fetch_error_count = 0
                 _display_epoch += 1  # P-05: signal render thread to rebuild viewport
+            with _portal_lock:
+                _portal_state["station_name"] = station_name
+                _portal_state["departures"] = [
+                    {k: v for k, v in d.items() if k != "calling_at_list"}
+                    for d in (departures or [])[:5]
+                ]
+                _portal_state["error_count"] = 0
             logger.debug(
                 "Fetch OK (attempt %d): %d departures for %s",
                 attempt, len(departures or []), station_name,
@@ -529,6 +542,8 @@ def _fetch_thread(config: dict) -> None:
                 _fetch_error_count += 1
                 err_count = _fetch_error_count
                 _display_epoch += 1  # trigger viewport rebuild for ARCH-02/03 updates
+            with _portal_lock:
+                _portal_state["error_count"] = err_count
 
             log_fn = logger.warning if isinstance(exc, requests.RequestException) else logger.error
             # ARCH-10: log station + attempt + error type — never the API key
@@ -652,6 +667,18 @@ def main() -> None:
     from luma.core.sprite_system import framerate_regulator
     regulator = framerate_regulator(config["targetFPS"])
 
+    # Start web portal thread
+    portal_app = create_app(_portal_state, _portal_lock, _restart_event)
+    portal_thread = threading.Thread(
+        target=lambda: portal_app.run(
+            host="0.0.0.0", port=config["portalPort"], threaded=True, use_reloader=False
+        ),
+        daemon=True,
+        name="portal",
+    )
+    portal_thread.start()
+    logger.info("Portal started on http://0.0.0.0:%d", config["portalPort"])
+
     # P-07: start fetch thread BEFORE the startup sleep so the first API call
     # is in-flight during the 5-second attribution screen (ARCH-07)
     fetcher = threading.Thread(target=_fetch_thread, args=(config,), daemon=True, name="fetch")
@@ -682,6 +709,11 @@ def main() -> None:
     last_err_band = -1   # error band when viewport was last built
 
     while not _shutdown_event.is_set():
+        if _restart_event.is_set():
+            logger.info("Config change via portal — restarting service")
+            _shutdown_event.set()
+            break
+
         with regulator:
             if len(blankHours) == 2 and isRun(blankHours[0], blankHours[1]):
                 # DISP-05: blank display during configured hours

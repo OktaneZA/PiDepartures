@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Train Departure Display</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:      #08080f;
+      --surface: #12121e;
+      --border:  #252540;
+      --accent:  #ffa000;
+      --text:    #e8e8f0;
+      --muted:   #6060a0;
+      --green:   #00c840;
+      --red:     #dc2020;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      font-size: 14px;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    h1 { font-size: 22px; color: var(--accent); margin-bottom: 4px; }
+    .subtitle { color: var(--muted); font-size: 12px; margin-bottom: 24px; }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 16px;
+      max-width: 680px;
+    }
+    h2 { font-size: 13px; color: var(--accent); text-transform: uppercase;
+         letter-spacing: 1px; margin-bottom: 16px; }
+    .field { margin-bottom: 14px; }
+    label { display: block; color: var(--muted); font-size: 12px; margin-bottom: 4px; }
+    input[type=text], input[type=password], input[type=number], select {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      color: var(--text);
+      font-size: 14px;
+      padding: 8px 10px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input:focus, select:focus { border-color: var(--accent); }
+    .row  { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+    .toggle-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; flex-shrink: 0; }
+    .btn {
+      background: var(--accent);
+      color: #000;
+      border: none;
+      border-radius: 6px;
+      padding: 10px 28px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .btn:hover { opacity: 0.85; }
+    .alert {
+      padding: 10px 14px;
+      border-radius: 6px;
+      margin-bottom: 16px;
+      font-size: 13px;
+      max-width: 680px;
+    }
+    .alert-error   { background: #2a0808; border: 1px solid var(--red);   color: #ff8080; }
+    .alert-success { background: #082a10; border: 1px solid var(--green);  color: #80ff80; }
+    .dep-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .dep-table th { color: var(--muted); font-weight: 400; font-size: 11px;
+                    text-transform: uppercase; letter-spacing: 1px;
+                    padding: 0 0 8px 0; text-align: left; }
+    .dep-table td { padding: 6px 0; border-top: 1px solid var(--border); }
+    .dep-time  { color: var(--accent); font-weight: 700; width: 52px; }
+    .dep-plat  { color: var(--muted); width: 60px; }
+    .dep-exp   { width: 90px; }
+    .dep-exp.ontime  { color: var(--green); }
+    .dep-exp.late    { color: var(--red); }
+    .dep-exp.cancel  { color: var(--red); font-weight: 600; }
+    .no-data   { color: var(--muted); font-size: 13px; padding: 8px 0; }
+    .err-badge { display:inline-block; background:#2a0808; border:1px solid var(--red);
+                 color:#ff8080; font-size:11px; padding:2px 8px; border-radius:10px; margin-left:8px; }
+    footer { max-width: 680px; color: var(--muted); font-size: 11px; margin-top: 8px; }
+    a { color: var(--accent); text-decoration: none; }
+    code { background: var(--border); border-radius: 3px; padding: 1px 5px; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <h1>Train Departure Display</h1>
+  <p class="subtitle">National Rail departure board · Raspberry Pi</p>
+
+  {% if errors %}
+  <div class="alert alert-error">&#9888; {{ errors }}</div>
+  {% endif %}
+  {% if saved %}
+  <div class="alert alert-success">&#10003; Config saved. Service is restarting&hellip;</div>
+  {% endif %}
+
+  <!-- Live departures -->
+  <div class="card">
+    <h2>
+      Live Departures
+      <span id="err-badge" class="err-badge" style="display:none"></span>
+    </h2>
+    <div id="dep-container">
+      <p class="no-data">Loading&hellip;</p>
+    </div>
+  </div>
+
+  <!-- Config form -->
+  <form method="POST" action="/save">
+
+    <div class="card">
+      <h2>Journey</h2>
+      <div class="row">
+        <div class="field">
+          <label>Departure Station CRS</label>
+          <input type="text" name="DEPARTURE_STATION" value="{{ cfg.get('DEPARTURE_STATION','') }}"
+                 placeholder="PAD" maxlength="3" style="text-transform:uppercase">
+        </div>
+        <div class="field">
+          <label>Destination Filter CRS (optional)</label>
+          <input type="text" name="DESTINATION_STATION" value="{{ cfg.get('DESTINATION_STATION','') }}"
+                 placeholder="Leave blank for all" maxlength="3" style="text-transform:uppercase">
+        </div>
+      </div>
+      <div class="field">
+        <label>API Key</label>
+        <input type="password" name="API_KEY" value="{{ cfg.get('API_KEY','') }}"
+               placeholder="Leave blank to keep existing" autocomplete="off">
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Filters</h2>
+      <div class="row">
+        <div class="field">
+          <label>Platform Filter Regex (optional)</label>
+          <input type="text" name="PLATFORM_FILTER" value="{{ cfg.get('PLATFORM_FILTER','') }}"
+                 placeholder="e.g. ^[12]$">
+        </div>
+        <div class="field">
+          <label>Blank Screen Hours (optional)</label>
+          <input type="text" name="SCREEN_BLANK_HOURS" value="{{ cfg.get('SCREEN_BLANK_HOURS','') }}"
+                 placeholder="e.g. 22-06">
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Display</h2>
+      <div class="row3">
+        <div class="field">
+          <label>Screen Rotation</label>
+          <select name="SCREEN_ROTATION">
+            {% for val, label in [('0','0°'),('1','90°'),('2','180°'),('3','270°')] %}
+            <option value="{{ val }}" {% if cfg.get('SCREEN_ROTATION','2') == val %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label>Refresh Interval (s)</label>
+          <input type="number" name="REFRESH_TIME" value="{{ cfg.get('REFRESH_TIME','120') }}"
+                 min="30" max="3600">
+        </div>
+      </div>
+      <div class="toggle-row">
+        <input type="checkbox" name="FIRST_DEPARTURE_BOLD" id="fdb"
+               {% if cfg.get('FIRST_DEPARTURE_BOLD','true') != 'false' %}checked{% endif %}>
+        <label for="fdb" style="margin:0;color:var(--text);">First departure in bold</label>
+      </div>
+      <div class="toggle-row">
+        <input type="checkbox" name="SHOW_DEPARTURE_NUMBERS" id="sdn"
+               {% if cfg.get('SHOW_DEPARTURE_NUMBERS','') == 'true' %}checked{% endif %}>
+        <label for="sdn" style="margin:0;color:var(--text);">Show departure numbers (1st, 2nd, 3rd)</label>
+      </div>
+      <div class="toggle-row">
+        <input type="checkbox" name="DUAL_SCREEN" id="ds"
+               {% if cfg.get('DUAL_SCREEN','') == 'true' %}checked{% endif %}>
+        <label for="ds" style="margin:0;color:var(--text);">Dual screen mode</label>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Portal</h2>
+      <div class="row">
+        <div class="field">
+          <label>Portal Password</label>
+          <input type="password" name="PORTAL_PASSWORD" value=""
+                 placeholder="Leave blank for local-only access" autocomplete="new-password">
+          <p style="font-size:11px;color:var(--muted);margin-top:4px;">
+            Clear to restrict to localhost only. Set to enable remote access via Basic Auth.
+          </p>
+        </div>
+        <div class="field">
+          <label>Portal Port</label>
+          <input type="number" name="PORTAL_PORT" value="{{ cfg.get('PORTAL_PORT','8080') }}"
+                 min="1" max="65535">
+        </div>
+      </div>
+    </div>
+
+    <button type="submit" class="btn">Save &amp; Restart</button>
+  </form>
+
+  <footer style="margin-top:24px;">
+    Train Display &middot; <a href="/health">Health</a> &middot; <a href="/status">Status JSON</a>
+  </footer>
+
+  <script>
+    function classForExp(exp, aimed) {
+      if (!exp) return '';
+      if (exp === 'Cancelled') return 'cancel';
+      if (exp === 'On time' || exp === aimed) return 'ontime';
+      return 'late';
+    }
+
+    function updateDeps() {
+      fetch('/status')
+        .then(r => r.json())
+        .then(s => {
+          const badge = document.getElementById('err-badge');
+          if (s.error_count > 0) {
+            badge.textContent = 'No signal (' + s.error_count + 'x)';
+            badge.style.display = 'inline-block';
+          } else {
+            badge.style.display = 'none';
+          }
+
+          const container = document.getElementById('dep-container');
+          const deps = s.departures || [];
+          if (!deps.length) {
+            container.innerHTML = '<p class="no-data">No departures available</p>';
+            return;
+          }
+
+          let html = '<table class="dep-table"><thead><tr>'
+            + '<th>Time</th><th>Destination</th><th>Plat</th><th>Expected</th>'
+            + '</tr></thead><tbody>';
+          deps.forEach(d => {
+            const expClass = classForExp(d.expected_departure_time, d.aimed_departure_time);
+            const expText = d.expected_departure_time === d.aimed_departure_time
+              ? 'On time' : (d.expected_departure_time || '—');
+            html += `<tr>
+              <td class="dep-time">${d.aimed_departure_time || '—'}</td>
+              <td>${d.destination_name || '—'}</td>
+              <td class="dep-plat">${d.platform ? 'Plat ' + d.platform : '—'}</td>
+              <td class="dep-exp ${expClass}">${expText}</td>
+            </tr>`;
+          });
+          html += '</tbody></table>';
+          container.innerHTML = html;
+        })
+        .catch(() => {
+          document.getElementById('dep-container').innerHTML =
+            '<p class="no-data">Could not fetch status</p>';
+        });
+    }
+
+    updateDeps();
+    setInterval(updateDeps, 10000);
+  </script>
+</body>
+</html>
