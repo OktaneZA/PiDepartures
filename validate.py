@@ -43,7 +43,7 @@ def load_config_file(path: str) -> dict:
 
 
 def main() -> int:
-    """Run all 5 validation checks. Returns 0 on full pass, 1 on any failure."""
+    """Run all 6 validation checks. Returns 0 on full pass, 1 on any failure."""
     all_ok = True
 
     # Check 1: config file exists and is readable (VAL-03)
@@ -55,12 +55,20 @@ def main() -> int:
 
     cfg = load_config_file(CONFIG_FILE)
 
-    # Check 2: API_KEY is set (VAL-04) — print "set" never the value (SEC-01)
+    # Check 2: Production mode — DEBUG must not be TRUE (VAL-02)
+    debug_mode = cfg.get("DEBUG", "").upper() == "TRUE"
+    all_ok &= _check(
+        "Running in production mode (DEBUG != TRUE)",
+        not debug_mode,
+        "DEBUG=TRUE is set — display hardware will be skipped. Unset DEBUG to run on hardware.",
+    )
+
+    # Check 3: API_KEY is set (VAL-04) — print "set" never the value (SEC-01)
     api_key = cfg.get("API_KEY", "")
     api_key_set = bool(api_key)
     all_ok &= _check("API_KEY is set", api_key_set, "API_KEY is empty or missing")
 
-    # Check 3: DEPARTURE_STATION is valid CRS (VAL-05)
+    # Check 4: DEPARTURE_STATION is valid CRS (VAL-05)
     station = cfg.get("DEPARTURE_STATION", "").strip().upper()
     station_valid = bool(station) and bool(_CRS_RE.match(station))
     all_ok &= _check(
@@ -73,7 +81,7 @@ def main() -> int:
         print("\nCannot make API call without valid API_KEY and DEPARTURE_STATION.")
         return 1
 
-    # Check 4: live HTTPS call returns HTTP 200 with XML (VAL-06)
+    # Check 5: live HTTPS call returns HTTP 200 with XML (VAL-06)
     try:
         import requests
 
@@ -109,16 +117,29 @@ def main() -> int:
         )
 
         http_ok = resp.status_code == 200 and "soap:Envelope" in resp.text
+        if not http_ok:
+            if resp.status_code == 401:
+                reason = "HTTP 401 Unauthorized — API_KEY is invalid or not yet activated (allow 2–4 weeks after registration)"
+            elif resp.status_code == 403:
+                reason = "HTTP 403 Forbidden — API_KEY may be revoked or quota exceeded"
+            elif resp.status_code == 500:
+                reason = f"HTTP 500 — OpenLDBWS server error. Response: {resp.text[:200]}"
+            elif resp.status_code != 200:
+                reason = f"HTTP {resp.status_code}"
+            else:
+                reason = "Response missing soap:Envelope — unexpected response body"
+            all_ok &= _check(
+                f"Live HTTPS call to OpenLDBWS returned valid XML (HTTP {resp.status_code})",
+                False,
+                reason,
+            )
+            return 1
         all_ok &= _check(
             f"Live HTTPS call to OpenLDBWS returned valid XML (HTTP {resp.status_code})",
-            http_ok,
-            f"HTTP {resp.status_code}" if resp.status_code != 200 else "Response missing soap:Envelope",
+            True,
         )
 
-        if not http_ok:
-            return 1
-
-        # Check 5: at least one departure parsed (VAL-07)
+        # Check 6: at least one departure parsed (VAL-07)
         src_path = os.path.join(os.path.dirname(__file__), "src")
         if src_path not in sys.path:
             sys.path.insert(0, src_path)

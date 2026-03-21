@@ -616,10 +616,11 @@ def main() -> None:
     # Display init (ARCH-05: hardware failure → exit 1, no infinite loop)
     try:
         if config["headless"]:
-            logger.info("Headless/DEBUG mode — no display hardware")
+            logger.warning("DEBUG mode active — running headless, no display hardware initialised")
             from luma.core.interface.serial import noop
             serial = noop()
         else:
+            logger.info("Production mode — initialising SPI display hardware")
             import RPi.GPIO as GPIO
             GPIO.setwarnings(False)
             from luma.core.interface.serial import spi
