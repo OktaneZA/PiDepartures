@@ -147,9 +147,9 @@ echo "  Set a password to enable remote access via HTTP Basic Auth."
 echo -n "  Portal password (leave blank for local-only): "
 read -rs PORTAL_PASSWORD
 echo
-PORTAL_PORT=8080
+PORTAL_PORT=$(shuf -i 8000-9999 -n 1)
 if [[ -n "${PORTAL_PASSWORD}" ]]; then
-    read -r -p "  Portal port [8080]: " PORTAL_PORT_INPUT
+    read -r -p "  Portal port [${PORTAL_PORT}]: " PORTAL_PORT_INPUT
     [[ -n "${PORTAL_PORT_INPUT}" ]] && PORTAL_PORT="${PORTAL_PORT_INPUT}"
 fi
 
