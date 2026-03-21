@@ -92,11 +92,49 @@
     footer { max-width: 680px; color: var(--muted); font-size: 11px; margin-top: 8px; }
     a { color: var(--accent); text-decoration: none; }
     code { background: var(--border); border-radius: 3px; padding: 1px 5px; font-size: 12px; }
+    .sysbar {
+      max-width: 680px;
+      display: flex;
+      gap: 20px;
+      align-items: center;
+      margin-bottom: 20px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .sysbar-item { display: flex; align-items: center; gap: 6px; }
+    .sysbar-value { color: var(--text); }
+    .wifi-bars { display: inline-flex; align-items: flex-end; gap: 2px; height: 14px; }
+    .wifi-bars span {
+      width: 4px;
+      background: var(--border);
+      border-radius: 1px;
+      display: inline-block;
+    }
+    .wifi-bars span.lit { background: var(--accent); }
+    .clock { font-size: 20px; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
   </style>
 </head>
 <body>
   <h1>Train Departure Display</h1>
   <p class="subtitle">National Rail departure board · Raspberry Pi</p>
+
+  <!-- System info strip -->
+  <div class="sysbar">
+    <div class="sysbar-item">
+      <span class="clock" id="clock">--:--:--</span>
+    </div>
+    <div class="sysbar-item">
+      <span>WiFi</span>
+      <div class="wifi-bars" id="wifi-bars">
+        <span style="height:4px"></span>
+        <span style="height:7px"></span>
+        <span style="height:10px"></span>
+        <span style="height:14px"></span>
+      </div>
+      <span class="sysbar-value" id="wifi-ssid">—</span>
+      <span id="wifi-dbm" style="color:var(--muted)"></span>
+    </div>
+  </div>
 
   {% if errors %}
   <div class="alert alert-error">&#9888; {{ errors }}</div>
@@ -223,6 +261,37 @@
       if (exp === 'On time' || exp === aimed) return 'ontime';
       return 'late';
     }
+
+    // Live clock
+    function tickClock() {
+      const now = new Date();
+      const pad = n => String(n).padStart(2, '0');
+      document.getElementById('clock').textContent =
+        pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds());
+    }
+    tickClock();
+    setInterval(tickClock, 1000);
+
+    // WiFi info
+    function updateSysinfo() {
+      fetch('/sysinfo')
+        .then(r => r.json())
+        .then(s => {
+          document.getElementById('wifi-ssid').textContent = s.ssid || '—';
+          const dbm = s.signal_dbm;
+          if (dbm != null) {
+            document.getElementById('wifi-dbm').textContent = '(' + dbm + ' dBm)';
+            // 4-bar strength: excellent ≥-50, good ≥-60, fair ≥-70, weak ≥-80, poor <-80
+            const bars = dbm >= -50 ? 4 : dbm >= -60 ? 3 : dbm >= -70 ? 2 : dbm >= -80 ? 1 : 0;
+            document.querySelectorAll('#wifi-bars span').forEach((el, i) => {
+              el.classList.toggle('lit', i < bars);
+            });
+          }
+        })
+        .catch(() => {});
+    }
+    updateSysinfo();
+    setInterval(updateSysinfo, 30000);
 
     function updateDeps() {
       fetch('/status')

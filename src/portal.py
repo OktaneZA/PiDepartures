@@ -12,6 +12,7 @@ API_KEY is masked in the UI and only replaced if a new value is entered. (SEC-01
 
 import functools
 import logging
+import subprocess
 import threading
 from typing import Any
 
@@ -172,6 +173,35 @@ def create_app(
         with state_lock:
             state_copy = dict(portal_state)
         return jsonify(state_copy)
+
+    @app.route("/sysinfo", methods=["GET"])
+    def sysinfo() -> Response:
+        """Return WiFi SSID and signal strength. No auth — SSID is public broadcast info."""
+        info: dict[str, Any] = {"ssid": None, "signal_dbm": None}
+
+        try:
+            result = subprocess.run(
+                ["iwgetid", "-r"], capture_output=True, text=True, timeout=3
+            )
+            ssid = result.stdout.strip()
+            if ssid:
+                info["ssid"] = ssid
+        except Exception:  # noqa: BLE001
+            pass
+
+        try:
+            with open("/proc/net/wireless") as f:
+                for line in f:
+                    if "wlan" in line:
+                        parts = line.split()
+                        # format: wlan0: status link level noise …
+                        # level is index 3, may have trailing dot
+                        info["signal_dbm"] = int(float(parts[3].rstrip(".")))
+                        break
+        except Exception:  # noqa: BLE001
+            pass
+
+        return jsonify(info)
 
     @app.route("/health", methods=["GET"])
     def health() -> Response:
