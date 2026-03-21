@@ -48,12 +48,13 @@ This project is derived from [chrisys/train-departure-display](https://github.co
 | **Python** | 3.9+ (system Python on Pi OS) |
 | **luma.oled** | ≥ 3.13.0 — OLED display driver |
 | **luma.core** | ≥ 2.4.2 — display rendering framework |
-| **Pillow** | ≥ 10.3.0 — image/font rendering |
+| **Pillow** | ≥ 11.1.0 — image/font rendering (11.x required for Python 3.13) |
 | **requests** | ≥ 2.31.0 — HTTP client for API calls |
 | **xmltodict** | ≥ 0.13.0 — SOAP XML parsing |
 | **RPi.GPIO** | ≥ 0.7.1 — GPIO control |
 | **spidev** | ≥ 3.6 — SPI interface |
 | **urllib3** | ≥ 2.2.0 — HTTP connection pooling |
+| **flask** | ≥ 3.0.3 — web configuration portal |
 | **systemd** | system package — service management |
 | **git** | system package — source deployment |
 
@@ -95,6 +96,8 @@ Configuration is stored in `/etc/train-display/config`, owned by `root:train-dis
 | `SHOW_DEPARTURE_NUMBERS` | No | `false` | Show departure index numbers (1, 2, 3) |
 | `FIRST_DEPARTURE_BOLD` | No | `true` | Render first departure row in bold |
 | `DEBUG` | No | `false` | Run without display hardware (log-only mode) |
+| `PORTAL_PORT` | No | random 8000–9999 | Port for the web configuration portal |
+| `PORTAL_PASSWORD` | No | — | PBKDF2-SHA256 hash of portal password; empty = localhost-only |
 
 ---
 
@@ -135,7 +138,9 @@ A bash script run **directly on the Pi** as root. The installer is idempotent �
 | INST-13 | Installs and enables `train-display.service` and (if chosen) `train-display-reboot.timer` |
 | INST-14 | Starts the service and reports status |
 | INST-15 | Offers to run `validate.py` at the end to confirm API connectivity |
-| INST-16 | Prints a post-install summary: station, service status, log command |
+| INST-16 | Prints a post-install summary: station, service status, log command, web portal URL and port |
+| INST-17 | Prompts for optional portal password (hidden input); if set, hashes it with PBKDF2-SHA256 before writing to config |
+| INST-18 | Assigns a random portal port in the range 8000–9999; user may override at the prompt |
 
 ---
 
@@ -214,6 +219,9 @@ Key behaviours:
 | SEC-09 | No use of `eval`, `os.system`, or `subprocess` with config-derived values |
 | SEC-10 | Startup checks config file permissions; logs a warning if world-readable |
 | SEC-11 | Python dependency versions pinned in `requirements.txt` |
+| SEC-12 | `PORTAL_PASSWORD` stored as PBKDF2-HMAC-SHA256 hash (260 000 iterations, random 16-byte salt); never stored or logged in plaintext |
+| SEC-13 | Portal enforces localhost-only access when `PORTAL_PASSWORD` is empty; remote access blocked with HTTP 403 |
+| SEC-14 | Portal uses HTTP Basic Auth over LAN when `PORTAL_PASSWORD` is set; password verified via constant-time compare |
 
 ---
 
@@ -246,6 +254,12 @@ Key behaviours:
 | TEST-06 | `requirements-dev.txt` lists `pytest` and `pytest-mock` as dev-only dependencies |
 | TEST-07 | `pytest --tb=short -q` exits non-zero on any failure (CI-friendly) |
 | TEST-08 | `tests/test_display.py`: ordinal date suffix helper tested for 1st/2nd/3rd/4th, 11th/12th/13th (special cases), 21st/22nd/23rd boundary values |
+| TEST-09 | `tests/test_portal.py`: portal auth tested for local/remote × password-set/not-set; correct/wrong credentials; config-load failure fails closed |
+| TEST-10 | `tests/test_portal.py`: `/save` tested for API key masking, new key, password hashing, password clear, restart event, validation errors, permission errors |
+| TEST-11 | `tests/test_portal.py`: `/status`, `/sysinfo`, `/health` endpoints tested for correct response schema and auth requirements |
+| TEST-12 | `tests/test_config.py`: `hash_password` / `verify_password` tested for correct format, round-trip, wrong password, legacy plaintext, malformed hash |
+| TEST-13 | `tests/test_config.py`: `load_raw_config` / `save_raw_config` tested for parsing, quote stripping, comment handling, atomic write, round-trip |
+| TEST-14 | `tests/test_config.py`: `validate_portal_config` tested for all required fields, CRS format, numeric ranges, blank-hours format |
 
 ---
 
@@ -279,11 +293,30 @@ A standalone script run on the Pi after install to confirm end-to-end connectivi
 
 ---
 
-## 15. Out of Scope
+## 15. Web Configuration Portal
+
+A Flask web application running as a third thread within the same process, providing browser-based configuration without SSH access.
+
+| ID | Requirement |
+|---|---|
+| PORTAL-01 | Portal starts on `0.0.0.0` at the configured port; accessible from any device on the same network |
+| PORTAL-02 | Auth model: empty `PORTAL_PASSWORD` → localhost-only (127.0.0.1 / ::1); set → HTTP Basic Auth from all origins |
+| PORTAL-03 | `API_KEY` masked in the UI with `••••••••`; only replaced when a new value is explicitly entered |
+| PORTAL-04 | All configurable variables editable via form: `DEPARTURE_STATION`, `DESTINATION_STATION`, `PLATFORM_FILTER`, `SCREEN_BLANK_HOURS`, `REFRESH_TIME`, `SCREEN_ROTATION`, `FIRST_DEPARTURE_BOLD`, `SHOW_DEPARTURE_NUMBERS`, `DUAL_SCREEN`, `PORTAL_PASSWORD`, `PORTAL_PORT` |
+| PORTAL-05 | Config saved atomically via `os.replace()`; service restarts automatically after save |
+| PORTAL-06 | `/status` endpoint returns current departure state as JSON (polled by page every 10 s) |
+| PORTAL-07 | `/sysinfo` endpoint returns connected WiFi SSID and signal level in dBm (no auth required) |
+| PORTAL-08 | `/health` endpoint returns `{"ok": true}` with no auth required (liveness probe) |
+| PORTAL-09 | Page displays: live departures table, WiFi SSID + 4-bar signal strength, live clock (updated every second via JS) |
+| PORTAL-10 | Portal password change: new value hashed with PBKDF2-SHA256 before storing; clearing the field reverts to localhost-only mode |
+
+---
+
+## 16. Out of Scope
 
 - Journey planning, ticket purchasing, arrivals boards
 - iOS, macOS, or Windows support
-- Web dashboard or remote configuration UI
+- Arrivals boards or journey planning
 - OTA (over-the-air) updates
 - National Rail Darwin push feed (polling only in this version)
 - Any cloud service dependency (Balena, AWS, GCP, etc.)

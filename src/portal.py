@@ -87,7 +87,7 @@ def create_app(
         """Show configuration form."""
         try:
             raw = cfg_module.load_raw_config()
-        except FileNotFoundError:
+        except (FileNotFoundError, OSError):
             raw = {}
 
         # Mask API_KEY for display (SEC-01)
