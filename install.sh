@@ -23,7 +23,7 @@ RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; NC='\033[0m'
 info()    { echo -e "${GREEN}[INFO]${NC} $*"; }
 warn()    { echo -e "${YELLOW}[WARN]${NC} $*"; }
 error()   { echo -e "${RED}[ERROR]${NC} $*" >&2; exit 1; }
-confirm() { read -r -p "$1 [y/N] " ans; [[ "${ans,,}" == "y" ]]; }
+confirm() { read -r -p "$1 [y/N] " ans < /dev/tty; [[ "${ans,,}" == "y" ]]; }
 
 # Log all output to file and stdout simultaneously
 exec > >(tee -a "${LOGFILE}") 2>&1
@@ -115,18 +115,29 @@ info "train-display user in gpio and spi groups"
 # ---------------------------------------------------------------------------
 # INST-08 – INST-12: Interactive configuration
 # ---------------------------------------------------------------------------
+
+# Ensure all reads come from the terminal even when stdout/stderr are redirected
+exec < /dev/tty
+
+# Pre-initialise optional variables so set -u doesn't fire if prompts are skipped
+DESTINATION_STATION=""
+PLATFORM_FILTER=""
+SCREEN_BLANK_HOURS=""
+PORTAL_PASSWORD=""
+PORTAL_PORT=$(shuf -i 8000-9999 -n 1)
+
 info ""
 info "=== Configuration ==="
 
 # API key (hidden input — SEC-05)
 echo -n "Enter your National Rail OpenLDBWS API key: "
-read -rs API_KEY
+read -rs API_KEY < /dev/tty
 echo
 [[ -z "${API_KEY}" ]] && error "API_KEY cannot be empty"
 
 # Departure station
 while true; do
-    read -r -p "Enter departure station CRS code (e.g. PAD, WAT, MAN): " DEPARTURE_STATION
+    read -r -p "Enter departure station CRS code (e.g. PAD, WAT, MAN): " DEPARTURE_STATION < /dev/tty
     DEPARTURE_STATION="${DEPARTURE_STATION^^}"
     if [[ "${DEPARTURE_STATION}" =~ ^[A-Z]{3}$ ]]; then
         break
@@ -135,7 +146,7 @@ while true; do
 done
 
 # Optional: destination filter
-read -r -p "Filter by destination CRS (leave blank for none): " DESTINATION_STATION
+read -r -p "Filter by destination CRS (leave blank for none): " DESTINATION_STATION < /dev/tty
 DESTINATION_STATION="${DESTINATION_STATION^^}"
 if [[ -n "${DESTINATION_STATION}" ]] && ! [[ "${DESTINATION_STATION}" =~ ^[A-Z]{3}$ ]]; then
     warn "Invalid destination CRS — ignoring"
@@ -143,10 +154,10 @@ if [[ -n "${DESTINATION_STATION}" ]] && ! [[ "${DESTINATION_STATION}" =~ ^[A-Z]{
 fi
 
 # Optional: platform filter
-read -r -p "Platform filter regex (e.g. ^[12]$, leave blank for none): " PLATFORM_FILTER
+read -r -p "Platform filter regex (e.g. ^[12]$, leave blank for none): " PLATFORM_FILTER < /dev/tty
 
 # Optional: screen blank hours
-read -r -p "Blank screen hours HH-HH (e.g. 22-06, leave blank to disable): " SCREEN_BLANK_HOURS
+read -r -p "Blank screen hours HH-HH (e.g. 22-06, leave blank to disable): " SCREEN_BLANK_HOURS < /dev/tty
 if [[ -n "${SCREEN_BLANK_HOURS}" ]] && ! [[ "${SCREEN_BLANK_HOURS}" =~ ^[0-9]{1,2}-[0-9]{1,2}$ ]]; then
     warn "Invalid blank-hours format — ignoring"
     SCREEN_BLANK_HOURS=""
@@ -154,15 +165,14 @@ fi
 
 # Optional: portal password (leave blank for local-only access)
 echo ""
-echo "  Web portal runs on port 8080 and lets you change settings via a browser."
+echo "  Web portal runs on a random port and lets you change settings via a browser."
 echo "  Leave password blank to allow access from localhost only (recommended for LAN use)."
 echo "  Set a password to enable remote access via HTTP Basic Auth."
 echo -n "  Portal password (leave blank for local-only): "
-read -rs PORTAL_PASSWORD
+read -rs PORTAL_PASSWORD < /dev/tty
 echo
-PORTAL_PORT=$(shuf -i 8000-9999 -n 1)
 if [[ -n "${PORTAL_PASSWORD}" ]]; then
-    read -r -p "  Portal port [${PORTAL_PORT}]: " PORTAL_PORT_INPUT
+    read -r -p "  Portal port [${PORTAL_PORT}]: " PORTAL_PORT_INPUT < /dev/tty
     [[ -n "${PORTAL_PORT_INPUT}" ]] && PORTAL_PORT="${PORTAL_PORT_INPUT}"
 fi
 
