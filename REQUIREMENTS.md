@@ -26,18 +26,40 @@ This project is derived from [chrisys/train-departure-display](https://github.co
 | **OS** | Raspberry Pi OS Lite **(Bookworm)**; 32-bit for Zero W, 32 or 64-bit for Zero 2W. Bookworm required for Raspberry Pi Connect support |
 | **Network** | Wi-Fi or Ethernet (required for API access) |
 
-### SSD1322 GPIO Wiring (Pi Zero W)
+### SSD1322 GPIO Wiring (Pi Zero W / Zero 2W)
 
-| OLED Pin | GPIO Pin | Physical Pin | Notes |
+**Orientation:** Pin 1 is at the corner of the GPIO header closest to the SD card slot.
+
+```
+GPIO header — viewed from above, SD card end on the left
+
+  Pin 1  [ 3V3 ●]── VCC    [  5V  ]  Pin 2
+  Pin 3  [ SDA  ]          [  5V  ]  Pin 4
+  Pin 5  [ SCL  ]          [ GND ●]── GND   Pin 6
+  Pin 7  [GPIO4 ]          [ TXD  ]  Pin 8
+  Pin 9  [ GND  ]          [ RXD  ]  Pin 10
+  Pin 11 [GPIO17]          [GPIO18]  Pin 12
+  Pin 13 [GPIO27]          [ GND  ]  Pin 14
+  Pin 15 [GPIO22]          [GPIO23]  Pin 16
+  Pin 17 [ 3V3  ]          [GPIO24●]── DC   Pin 18
+  Pin 19 [GPIO10●]── DIN   [ GND  ]  Pin 20
+  Pin 21 [ GPIO9]          [GPIO25●]── RST  Pin 22
+  Pin 23 [GPIO11●]── CLK   [GPIO8 ●]── CS  Pin 24
+  Pin 25 [ GND  ]          [ GPIO7 ]  Pin 26
+
+  ● = connected to OLED
+```
+
+| OLED Pin | Function | GPIO | Physical Pin |
 |---|---|---|---|
-| VCC | 3.3V | Pin 1 | 3.3V power |
-| GND | GND | Pin 6 | Ground |
-| DIN | GPIO 10 (MOSI) | Pin 19 | SPI data |
-| CLK | GPIO 11 (SCLK) | Pin 23 | SPI clock |
-| CS | GPIO 8 (CE0) | Pin 24 | Chip select (screen 1) |
-| DC | GPIO 24 | Pin 18 | Data/command select |
-| RST | GPIO 25 | Pin 22 | Reset |
-| CS2 | GPIO 7 (CE1) | Pin 26 | Chip select (screen 2, dual-screen mode only) |
+| VCC | 3.3V power | 3.3V | Pin 1 |
+| GND | Ground | GND | Pin 6 |
+| DIN | SPI data (MOSI) | GPIO 10 | Pin 19 |
+| CLK | SPI clock (SCLK) | GPIO 11 | Pin 23 |
+| CS | Chip select (screen 1) | GPIO 8 (CE0) | Pin 24 |
+| DC | Data/command select | GPIO 24 | Pin 18 |
+| RST | Reset | GPIO 25 | Pin 22 |
+| CS2 | Chip select (screen 2, dual-screen only) | GPIO 7 (CE1) | Pin 26 |
 
 ---
 
@@ -96,6 +118,7 @@ Configuration is stored in `/etc/train-display/config`, owned by `root:train-dis
 | `SHOW_DEPARTURE_NUMBERS` | No | `false` | Show departure index numbers (1, 2, 3) |
 | `FIRST_DEPARTURE_BOLD` | No | `true` | Render first departure row in bold |
 | `DEBUG` | No | `false` | Run without display hardware (log-only mode) |
+| `PORTAL_ENABLED` | No | `true` | Enable the web configuration portal |
 | `PORTAL_PORT` | No | random 8000–9999 | Port for the web configuration portal |
 | `PORTAL_PASSWORD` | No | — | PBKDF2-SHA256 hash of portal password; empty = localhost-only |
 
@@ -132,15 +155,14 @@ A bash script run **directly on the Pi** as root. The installer is idempotent �
 | INST-07 | Adds `train-display` user to `gpio` and `spi` groups for hardware access |
 | INST-08 | Prompts interactively for `API_KEY` using `read -s` (hidden input, not echoed) |
 | INST-09 | Prompts for `DEPARTURE_STATION` with CRS code hint and format validation (3 uppercase letters) |
-| INST-10 | Optionally prompts for `DESTINATION_STATION`, `PLATFORM_FILTER`, `SCREEN_BLANK_HOURS` |
-| INST-11 | Asks whether to enable weekly reboot timer and (if yes) what time (default: Sun 03:00) |
-| INST-12 | Writes `/etc/train-display/config` with permissions `640`, owner `root:train-display` |
-| INST-13 | Installs and enables `train-display.service` and (if chosen) `train-display-reboot.timer` |
-| INST-14 | Starts the service and reports status |
-| INST-15 | Offers to run `validate.py` at the end to confirm API connectivity |
-| INST-16 | Prints a post-install summary: station, service status, log command, web portal URL and port |
-| INST-17 | Prompts for optional portal password (hidden input); if set, hashes it with PBKDF2-SHA256 before writing to config |
-| INST-18 | Assigns a random portal port in the range 8000–9999; user may override at the prompt |
+| INST-10 | Optionally prompts for portal password (hidden input); if set, hashes with PBKDF2-SHA256 |
+| INST-11 | Assigns a random portal port in the range 8000–9999; user may override at the prompt |
+| INST-12 | Writes `/etc/train-display/config` with permissions `640`, owner `root:train-display`; portal enabled by default |
+| INST-13 | Installs and enables `train-display.service`; does not auto-start — user starts manually after validation |
+| INST-14 | Runs `validate.py` to confirm API connectivity before service is started |
+| INST-15 | Prints post-install summary including portal URL; directs user to portal for all further configuration |
+| INST-16 | Prints Raspberry Pi Connect URL (`connect.raspberrypi.com`) for ongoing remote management |
+| INST-17 | Weekly reboot timer unit files shipped in repo; enabled manually post-install (not part of core installer) |
 
 ---
 
@@ -190,7 +212,7 @@ Key behaviours:
 |---|---|
 | REBOOT-01 | `train-display-reboot.timer` triggers a full system reboot every 7 days |
 | REBOOT-02 | Default schedule: Sunday at 03:00 local time (configurable during install) |
-| REBOOT-03 | Timer installed and enabled by `install.sh` alongside the main service |
+| REBOOT-03 | Timer unit files shipped in the repo under `systemd/`; enabled manually post-install (not part of core installer) |
 | REBOOT-04 | Reboot performed via `systemctl reboot` (clean shutdown sequence) |
 | REBOOT-05 | Timer and schedule documented in `INSTALL.md` with instructions to change or disable |
 
@@ -200,7 +222,7 @@ Key behaviours:
 
 - `update.sh` performs: `git -C /opt/train-display pull && pip install -r requirements.txt && systemctl restart train-display`
 - No OTA — manual pull on the Pi is the supported update path
-- Re-running `install.sh` is the supported reconfiguration path
+- **Reconfiguration:** all settings (station, filters, display options, portal password) managed via the web portal; re-running `install.sh` is only required to change `API_KEY` or `DEPARTURE_STATION`
 
 ---
 
@@ -286,7 +308,6 @@ A standalone script run on the Pi after install to confirm end-to-end connectivi
 
 | File | Purpose |
 |---|---|
-| `CLAUDE.md` | AI assistant instructions: project conventions, test/validate commands, Do Not rules |
 | `REQUIREMENTS.md` | This document — canonical requirements reference |
 | `INSTALL.md` | Human-readable installer and wiring guide |
 | `README.md` | Overview, quick-start, hardware photo, licence |

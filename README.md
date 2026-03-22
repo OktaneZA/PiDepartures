@@ -19,9 +19,31 @@ Based on [chrisys/train-departure-display](https://github.com/chrisys/train-depa
 |---|---|
 | Pi | Raspberry Pi Zero W (or Zero 2W, 3B, 3B+, 4) |
 | Display | SSD1322 256×64 OLED, 7-pin SPI (e.g. DIYTZT 3.12" module) |
-| OS | Raspberry Pi OS Lite (Bullseye or Bookworm); 32-bit for Zero W, 32 or 64-bit for Zero 2W |
+| OS | Raspberry Pi OS Lite **(Bookworm)**; 32-bit for Zero W, 32 or 64-bit for Zero 2W |
 
 ### GPIO Wiring
+
+Pin 1 is at the corner of the GPIO header closest to the **SD card slot**.
+
+```
+  ◄── SD card                                          USB / HDMI ──►
+
+  Pin 1  [ 3V3 ●]── VCC    [  5V  ]  Pin 2
+  Pin 3  [ SDA  ]          [  5V  ]  Pin 4
+  Pin 5  [ SCL  ]          [ GND ●]── GND          Pin 6
+  Pin 7  [GPIO4 ]          [ TXD  ]  Pin 8
+  Pin 9  [ GND  ]          [ RXD  ]  Pin 10
+  Pin 11 [GPIO17]          [GPIO18]  Pin 12
+  Pin 13 [GPIO27]          [ GND  ]  Pin 14
+  Pin 15 [GPIO22]          [GPIO23]  Pin 16
+  Pin 17 [ 3V3  ]          [GPIO24●]── DC          Pin 18
+  Pin 19 [GPIO10●]── DIN   [ GND  ]  Pin 20
+  Pin 21 [ GPIO9]          [GPIO25●]── RST         Pin 22
+  Pin 23 [GPIO11●]── CLK   [ GPIO8●]── CS         Pin 24
+  Pin 25 [ GND  ]          [ GPIO7 ]  Pin 26
+
+  ● = wire to OLED
+```
 
 | OLED Pin | Function | GPIO | Physical Pin |
 |---|---|---|---|
@@ -62,21 +84,13 @@ Based on [chrisys/train-departure-display](https://github.com/chrisys/train-depa
 
 > **Note:** Screen sharing requires a Pi 4 or newer with a desktop environment. The Zero 2W supports remote shell only via Raspberry Pi Connect.
 
-### Step 3 — Create a GitHub personal access token
+### Step 3 — Download and run the installer
 
-The repo is private, so the Pi needs credentials to clone it.
-
-1. Go to [github.com/settings/tokens](https://github.com/settings/tokens)
-2. Click **Generate new token (classic)**
-3. Give it a name (e.g. `pi-departures`), set expiry, tick **repo** scope
-4. Copy the token — you'll use it as the password in Step 4
-
-### Step 4 — Clone and run the installer
+**Important:** Download the script before running it — piping directly from curl breaks the interactive prompts:
 
 ```bash
-git clone https://github.com/OktaneZA/PiDepartures.git /tmp/train-display
-# When prompted: username = OktaneZA, password = your token from Step 3
-sudo bash /tmp/train-display/install.sh
+curl -fsSL https://raw.githubusercontent.com/OktaneZA/PiDepartures/master/install.sh -o /tmp/install.sh
+sudo bash /tmp/install.sh
 ```
 
 The installer will prompt you for:
@@ -84,10 +98,15 @@ The installer will prompt you for:
 - **Departure station** — 3-letter CRS code (e.g. `WAT`)
 - **Destination station** — optional, filters departures to one destination
 - **Platform filter** — optional regex (e.g. `^[12]$` for platforms 1 and 2)
-- **Screen blank hours** — optional, format `HH-HH` (e.g. `22-06` to blank overnight)
-- **Weekly reboot** — optional scheduled reboot (default Sunday 03:00)
+- **Web portal** — optional, enables browser-based config UI
 
-### Step 5 — Verify it's working
+After installation, start the service manually once you're happy validation passed:
+
+```bash
+sudo systemctl start train-display
+```
+
+### Step 4 — Verify it's working
 
 ```bash
 # Check service is running
@@ -106,25 +125,16 @@ The validator runs 5 checks and prints the next departure if everything is worki
 
 ## Configuration
 
-Config lives in `/etc/train-display/config` (written by the installer). To change any setting, re-run the installer:
+All settings are managed through the **web portal**. Once the service is running, open a browser and go to:
 
-```bash
-sudo bash /opt/train-display/install.sh
+```
+http://<pi-ip>:<PORTAL_PORT>
 ```
 
-| Variable | Required | Default | Description |
-|---|---|---|---|
-| `API_KEY` | Yes | — | National Rail API key |
-| `DEPARTURE_STATION` | Yes | — | 3-letter CRS code (e.g. `PAD`) |
-| `DESTINATION_STATION` | No | — | Filter by destination CRS |
-| `PLATFORM_FILTER` | No | — | Regex for platform (e.g. `^[12]$`) |
-| `REFRESH_TIME` | No | `120` | Seconds between API polls |
-| `SCREEN_ROTATION` | No | `2` | Display rotation (0–3) |
-| `SCREEN_BLANK_HOURS` | No | — | Blank display hours `HH-HH` (e.g. `22-06`) |
-| `DUAL_SCREEN` | No | `false` | Second SSD1322 on CE1 |
-| `FIRST_DEPARTURE_BOLD` | No | `true` | Render first departure in bold |
-| `SHOW_DEPARTURE_NUMBERS` | No | `false` | Show departure index (1, 2, 3) |
-| `INDIVIDUAL_STATION_DEPARTURE_TIME` | No | `false` | Show per-stop departure times in calling points |
+The portal URL is printed at the end of the installer. From the portal you can change the departure station, destination filter, platform filter, refresh rate, display rotation, blank hours, and portal password — without needing to SSH into the Pi.
+
+> If you enabled a portal password during install, use username `admin` and the password you set.
+> If no password was set, the portal is accessible from your local network only (no login required).
 
 ---
 
@@ -145,8 +155,9 @@ sudo bash /opt/train-display/update.sh
 | `API_KEY is required` | Edit `/etc/train-display/config` and set `API_KEY=...` |
 | No departures shown | Run `validate.py` to check API connectivity |
 | Service not starting | `journalctl -u train-display -n 50` for full error log |
-| `raspberrypi.local` not found | Use the Pi's IP address directly, or use Raspberry Pi Connect remote shell |
+| CRS prompt loops — not accepting input | Download installer first: `curl ... -o /tmp/install.sh && sudo bash /tmp/install.sh` |
 | Pi not appearing in Connect | Ensure `rpi-connect-lite` is installed and `rpi-connect signin` has been run |
+| Connect signin link expired | Run `rpi-connect signin` again to generate a new link |
 
 ---
 

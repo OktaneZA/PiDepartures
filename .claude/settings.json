@@ -1,9 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(python -m pytest --tb=short -v)",
-      "Bash(python scripts/preview.py)",
-      "WebFetch(domain:www.raspberrypi.com)"
-    ]
-  }
-}

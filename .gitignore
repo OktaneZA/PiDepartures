@@ -29,3 +29,7 @@ preview.png
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Claude Code
+.claude/
+CLAUDE.md
