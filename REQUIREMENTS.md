@@ -30,6 +30,8 @@ This project is derived from [chrisys/train-departure-display](https://github.co
 
 **Orientation:** Pin 1 is at the corner of the GPIO header closest to the SD card slot.
 
+![Wiring diagram](docs/wiring.jpg)
+
 ```
 GPIO header — viewed from above, SD card end on the left
 

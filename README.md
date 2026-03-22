@@ -25,6 +25,8 @@ Based on [chrisys/train-departure-display](https://github.com/chrisys/train-depa
 
 Pin 1 is at the corner of the GPIO header closest to the **SD card slot**.
 
+![Wiring diagram](docs/wiring.jpg)
+
 ```
   ◄── SD card                                          USB / HDMI ──►
 

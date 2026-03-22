@@ -13,6 +13,8 @@
 
 **Orientation:** Pin 1 is at the corner of the GPIO header closest to the **SD card slot**. Hold the Pi with the SD card on the left and the USB/HDMI ports on the right — Pin 1 is top-left.
 
+![Wiring diagram](docs/wiring.jpg)
+
 ```
   ◄── SD card                                          USB / HDMI ──►
 
