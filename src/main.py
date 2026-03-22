@@ -667,17 +667,20 @@ def main() -> None:
     from luma.core.sprite_system import framerate_regulator
     regulator = framerate_regulator(config["targetFPS"])
 
-    # Start web portal thread
-    portal_app = create_app(_portal_state, _portal_lock, _restart_event)
-    portal_thread = threading.Thread(
-        target=lambda: portal_app.run(
-            host="0.0.0.0", port=config["portalPort"], threaded=True, use_reloader=False
-        ),
-        daemon=True,
-        name="portal",
-    )
-    portal_thread.start()
-    logger.info("Portal started on http://0.0.0.0:%d", config["portalPort"])
+    # Start web portal thread (only if PORTAL_ENABLED != false)
+    if config["portalEnabled"]:
+        portal_app = create_app(_portal_state, _portal_lock, _restart_event)
+        portal_thread = threading.Thread(
+            target=lambda: portal_app.run(
+                host="0.0.0.0", port=config["portalPort"], threaded=True, use_reloader=False
+            ),
+            daemon=True,
+            name="portal",
+        )
+        portal_thread.start()
+        logger.info("Portal started on http://0.0.0.0:%d", config["portalPort"])
+    else:
+        logger.info("Web portal disabled (PORTAL_ENABLED=false)")
 
     # P-07: start fetch thread BEFORE the startup sleep so the first API call
     # is in-flight during the 5-second attribution screen (ARCH-07)

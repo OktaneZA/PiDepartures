@@ -205,6 +205,7 @@ def load_config() -> dict:
     data["hoursPattern"] = _HOURS_PATTERN
 
     data["headless"] = os.getenv("DEBUG", "").upper() == "TRUE"  # DEBUG=true skips hardware
+    data["portalEnabled"] = os.getenv("PORTAL_ENABLED", "true").upper() != "FALSE"
     data["portalPort"] = int(os.getenv("PORTAL_PORT") or 8080)
 
     data["dualScreen"] = os.getenv("DUAL_SCREEN", "").upper() == "TRUE"
