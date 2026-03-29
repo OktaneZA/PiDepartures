@@ -103,9 +103,9 @@ sudo bash /tmp/install.sh
 The installer will prompt you for:
 - **API key** — your National Rail OpenLDBWS key (hidden input)
 - **Departure station** — 3-letter CRS code (e.g. `WAT`)
-- **Destination station** — optional, filters departures to one destination
-- **Platform filter** — optional regex (e.g. `^[12]$` for platforms 1 and 2)
-- **Web portal** — optional, enables browser-based config UI
+- **Destination station** — optional, filters departures to one destination (press Enter to skip)
+- **Platform filter** — optional regex (e.g. `^[12]$` for platforms 1 and 2) (press Enter to skip)
+- **Web portal** — optional, enables browser-based config UI (press Enter to skip, can be enabled later)
 
 After installation, start the service manually once you're happy validation passed:
 
