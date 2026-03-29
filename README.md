@@ -61,32 +61,37 @@ Pin 1 is at the corner of the GPIO header closest to the **SD card slot**.
 
 ## Installation
 
-### Step 1 — Flash the SD card
+### Step 1 — Set up Raspberry Pi Connect (before flashing)
+
+Create a free account at [connect.raspberrypi.com](https://connect.raspberrypi.com) — you'll need this to access the Pi remotely once it's running.
+
+### Step 2 — Flash the SD card
 
 1. Download [Raspberry Pi Imager](https://www.raspberrypi.com/software/) on your computer
 2. Choose **Raspberry Pi OS Lite (Bookworm)** — 32-bit for Zero W; either 32 or 64-bit for Zero 2W
-3. Click the **gear icon** before flashing:
-   - Set username/password
-   - Configure your Wi-Fi (SSID + password)
-4. Flash to SD card, insert into Pi, power on
+3. Click **Next → Edit Settings** before writing and configure **all of the following** — this avoids needing a keyboard or monitor on first boot:
 
-### Step 2 — Connect via Raspberry Pi Connect
+   **General tab:**
+   - Set hostname, username, and password
+   - Configure your Wi-Fi SSID and password
+   - Set locale/timezone
 
-[Raspberry Pi Connect](https://connect.raspberrypi.com) lets you access a remote shell in your browser — no IP address or SSH client needed.
+   **Services tab:**
+   - Tick **Enable SSH** → Use password authentication
 
-1. Create a free account at [connect.raspberrypi.com](https://connect.raspberrypi.com)
-2. Wait ~60 seconds after power-on for the Pi to boot
-3. On the Pi (first boot only — connect a keyboard/monitor, or use SSH once to run these):
-   ```bash
-   sudo apt update && sudo apt install -y rpi-connect-lite
-   rpi-connect signin
-   ```
-   Follow the link printed in the terminal to authorise the device in your browser
-4. Visit [connect.raspberrypi.com](https://connect.raspberrypi.com) → your device → **Remote shell**
+   **Options tab:**
+   - Tick **Enable Raspberry Pi Connect**
 
-> **Note:** Screen sharing requires a Pi 4 or newer with a desktop environment. The Zero 2W supports remote shell only via Raspberry Pi Connect.
+4. Click **Save → Yes**, then write the image to the SD card
 
-### Step 3 — Download and run the installer
+### Step 3 — Boot and connect
+
+1. Insert SD card, power on the Pi — wait ~90 seconds for first boot
+2. Go to [connect.raspberrypi.com](https://connect.raspberrypi.com) → your Pi should appear → click **Remote shell**
+
+> **Note:** The Zero 2W supports remote shell only. Screen sharing requires a Pi 4+ with a desktop OS.
+
+### Step 4 — Download and run the installer
 
 **Important:** Download the script before running it — piping directly from curl breaks the interactive prompts:
 
@@ -108,7 +113,7 @@ After installation, start the service manually once you're happy validation pass
 sudo systemctl start train-display
 ```
 
-### Step 4 — Verify it's working
+### Step 5 — Verify it's working
 
 ```bash
 # Check service is running
