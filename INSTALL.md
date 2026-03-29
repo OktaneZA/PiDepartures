@@ -50,26 +50,40 @@
 
 ## Installation Steps
 
-### 1. Flash OS
+### 1. Flash OS with Raspberry Pi Imager
 
-Flash **Raspberry Pi OS Lite (Bookworm)** to an SD card using [Raspberry Pi Imager](https://www.raspberrypi.com/software/). Choose 32-bit for the Zero W; either 32 or 64-bit works on the Zero 2W. Set your username/password and configure Wi-Fi in the imager before flashing.
+Download and open [Raspberry Pi Imager](https://www.raspberrypi.com/software/). Before writing the image, click **Next → Edit Settings** (the gear icon) and configure the following — this is the only time you can set these without a keyboard/monitor attached to the Pi:
 
+**General tab:**
+- Set hostname (e.g. `PiDepartures`)
+- Set username and password
+- Configure Wi-Fi SSID and password
+- Set locale / timezone
+
+**Services tab:**
+- **Enable SSH** → tick "Use password authentication"
+
+**Options tab / Raspberry Pi Connect:**
+- Tick **Enable Raspberry Pi Connect** — this installs and enables Pi Connect automatically on first boot so you can access a remote shell from your browser with no keyboard or monitor needed
+
+> Choose **Raspberry Pi OS Lite (Bookworm)** as the OS. 32-bit for the Zero W; either 32 or 64-bit for the Zero 2W.
 > Bookworm is required for Raspberry Pi Connect support.
+
+Click **Save → Yes** to apply the settings, then write the image to the SD card.
 
 ### 2. Boot and connect via Raspberry Pi Connect
 
-[Raspberry Pi Connect](https://connect.raspberrypi.com) provides browser-based remote shell access — no SSH client or IP address needed. All ongoing management of the Pi (starting/stopping the service, viewing logs, reconfiguring) is done through Pi Connect.
+1. Insert the SD card and power on the Pi — wait ~90 seconds for first boot
+2. Open [connect.raspberrypi.com](https://connect.raspberrypi.com) and sign in
+3. Your Pi should appear in the device list — click **Remote shell**
 
-1. Insert SD card and power on — wait ~60 seconds to boot
-2. On first boot, connect a keyboard and monitor (or use SSH once) and run:
-   ```bash
-   sudo apt update && sudo apt install -y rpi-connect-lite
-   rpi-connect signin
-   ```
-3. Follow the link in the terminal to authorise the device at [connect.raspberrypi.com](https://connect.raspberrypi.com)
-4. Open your browser → [connect.raspberrypi.com](https://connect.raspberrypi.com) → your device → **Remote shell**
+> **Note:** The Zero 2W supports remote shell only. Screen sharing requires a Pi 4+ with a desktop OS.
 
-> **Note:** Screen sharing requires a Pi 4 or newer with a desktop environment. The Zero 2W supports remote shell only.
+If your Pi does not appear after 2 minutes, SSH in directly (`ssh <username>@<pi-ip>`) and run:
+```bash
+rpi-connect signin
+```
+Follow the link to authorise the device, then use Pi Connect going forward.
 
 ### 3. Download and run installer
 
