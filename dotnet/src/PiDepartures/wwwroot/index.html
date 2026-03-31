@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Train Departure Display</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Courier New", Courier, monospace;
+    background: #08080f;
+    color: #d0d0d0;
+    min-height: 100vh;
+    padding: 0;
+  }
+  a { color: #ffa000; }
+
+  /* ── Sysbar ──────────────────────────────────────────────── */
+  .sysbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #101018;
+    border-bottom: 1px solid #ffa00040;
+    padding: 6px 16px;
+    font-size: 13px;
+    color: #888;
+  }
+  .sysbar .clock { color: #ffa000; font-weight: bold; }
+  .sysbar .wifi { display: flex; align-items: center; gap: 8px; }
+  .wifi-bars { display: flex; align-items: flex-end; gap: 2px; height: 14px; }
+  .wifi-bars span {
+    display: inline-block;
+    width: 4px;
+    background: #333;
+    border-radius: 1px;
+  }
+  .wifi-bars span.active { background: #ffa000; }
+  .wifi-bars span:nth-child(1) { height: 4px; }
+  .wifi-bars span:nth-child(2) { height: 7px; }
+  .wifi-bars span:nth-child(3) { height: 10px; }
+  .wifi-bars span:nth-child(4) { height: 14px; }
+
+  /* ── Container ───────────────────────────────────────────── */
+  .container { max-width: 720px; margin: 0 auto; padding: 16px; }
+
+  h1 {
+    color: #ffa000;
+    font-size: 20px;
+    margin-bottom: 8px;
+    border-bottom: 2px solid #ffa000;
+    padding-bottom: 6px;
+  }
+  h2 {
+    color: #ffa000;
+    font-size: 15px;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  /* ── Status messages ─────────────────────────────────────── */
+  .msg { padding: 8px 12px; margin-bottom: 12px; border-radius: 4px; font-size: 13px; }
+  .msg-ok { background: #0a2a0a; border: 1px solid #2a6a2a; color: #6aea6a; }
+  .msg-err { background: #2a0a0a; border: 1px solid #6a2a2a; color: #ea6a6a; }
+
+  /* ── Departures table ────────────────────────────────────── */
+  .departures { margin-bottom: 20px; }
+  .departures .station-name { font-size: 14px; color: #ffa000; margin-bottom: 6px; }
+  .dep-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  .dep-table th {
+    text-align: left;
+    color: #ffa000;
+    border-bottom: 1px solid #ffa00060;
+    padding: 4px 8px;
+    font-weight: normal;
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 1px;
+  }
+  .dep-table td {
+    padding: 4px 8px;
+    border-bottom: 1px solid #1a1a24;
+  }
+  .dep-table tr:hover td { background: #12121c; }
+  .dep-empty { color: #555; font-style: italic; padding: 12px 0; }
+
+  /* ── Cards ───────────────────────────────────────────────── */
+  .card {
+    background: #0e0e16;
+    border: 1px solid #1e1e2e;
+    border-radius: 6px;
+    padding: 14px 16px;
+    margin-bottom: 14px;
+  }
+
+  /* ── Form ────────────────────────────────────────────────── */
+  .field { margin-bottom: 10px; }
+  .field label {
+    display: block;
+    font-size: 12px;
+    color: #888;
+    margin-bottom: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .field input[type="text"],
+  .field input[type="number"],
+  .field input[type="password"],
+  .field select {
+    width: 100%;
+    background: #08080f;
+    border: 1px solid #2a2a3a;
+    color: #d0d0d0;
+    padding: 7px 10px;
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 14px;
+  }
+  .field input:focus, .field select:focus {
+    outline: none;
+    border-color: #ffa000;
+  }
+  .field-row { display: flex; gap: 12px; }
+  .field-row .field { flex: 1; }
+  .checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+    font-size: 13px;
+  }
+  .checkbox-row input[type="checkbox"] {
+    accent-color: #ffa000;
+    width: 16px;
+    height: 16px;
+  }
+
+  .btn-save {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    background: #ffa000;
+    color: #08080f;
+    border: none;
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: bold;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 8px;
+  }
+  .btn-save:hover { background: #ffb333; }
+
+  /* ── Responsive ──────────────────────────────────────────── */
+  @media (max-width: 520px) {
+    .field-row { flex-direction: column; gap: 0; }
+    .container { padding: 10px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Sysbar -->
+<div class="sysbar">
+  <span class="clock" id="clock">--:--:--</span>
+  <div class="wifi">
+    <div class="wifi-bars" id="wifi-bars">
+      <span></span><span></span><span></span><span></span>
+    </div>
+    <span id="wifi-ssid">--</span>
+    <span id="wifi-dbm"></span>
+  </div>
+</div>
+
+<div class="container">
+  <h1>Train Departure Display</h1>
+
+  <!-- Status messages -->
+  <div id="msg-saved" class="msg msg-ok" style="display:none">Configuration saved. Service restarting...</div>
+  <div id="msg-errors" class="msg msg-err" style="display:none"></div>
+
+  <!-- Live departures -->
+  <div class="departures">
+    <div class="station-name" id="station-name"></div>
+    <table class="dep-table">
+      <thead>
+        <tr><th>Time</th><th>Destination</th><th>Plat</th><th>Status</th></tr>
+      </thead>
+      <tbody id="dep-body">
+        <tr><td colspan="4" class="dep-empty">Loading...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Config form -->
+  <form id="config-form" action="/save" method="POST">
+
+    <!-- Journey -->
+    <div class="card">
+      <h2>Journey</h2>
+      <div class="field-row">
+        <div class="field">
+          <label for="DEPARTURE_STATION">Departure Station (CRS)</label>
+          <input type="text" id="DEPARTURE_STATION" name="DEPARTURE_STATION"
+                 maxlength="3" placeholder="e.g. KGX" required>
+        </div>
+        <div class="field">
+          <label for="DESTINATION_STATION">Destination (optional)</label>
+          <input type="text" id="DESTINATION_STATION" name="DESTINATION_STATION"
+                 maxlength="3" placeholder="e.g. CBG">
+        </div>
+      </div>
+      <div class="field">
+        <label for="API_KEY">API Key</label>
+        <input type="password" id="API_KEY" name="API_KEY" placeholder="National Rail OpenLDBWS key">
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card">
+      <h2>Filters</h2>
+      <div class="field-row">
+        <div class="field">
+          <label for="PLATFORM_FILTER">Platform Filter</label>
+          <input type="text" id="PLATFORM_FILTER" name="PLATFORM_FILTER" placeholder="e.g. 1">
+        </div>
+        <div class="field">
+          <label for="SCREEN_BLANK_HOURS">Blank Hours</label>
+          <input type="text" id="SCREEN_BLANK_HOURS" name="SCREEN_BLANK_HOURS" placeholder="22-06">
+        </div>
+      </div>
+    </div>
+
+    <!-- Display -->
+    <div class="card">
+      <h2>Display</h2>
+      <div class="field-row">
+        <div class="field">
+          <label for="SCREEN_ROTATION">Screen Rotation</label>
+          <select id="SCREEN_ROTATION" name="SCREEN_ROTATION">
+            <option value="0">0</option>
+            <option value="1">1</option>
+            <option value="2" selected>2</option>
+            <option value="3">3</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="REFRESH_TIME">Refresh Time (s)</label>
+          <input type="number" id="REFRESH_TIME" name="REFRESH_TIME"
+                 min="30" max="3600" value="120">
+        </div>
+      </div>
+      <div class="checkbox-row">
+        <input type="checkbox" id="FIRST_DEPARTURE_BOLD" name="FIRST_DEPARTURE_BOLD" checked>
+        <label for="FIRST_DEPARTURE_BOLD">First departure bold</label>
+      </div>
+      <div class="checkbox-row">
+        <input type="checkbox" id="SHOW_DEPARTURE_NUMBERS" name="SHOW_DEPARTURE_NUMBERS">
+        <label for="SHOW_DEPARTURE_NUMBERS">Show departure numbers</label>
+      </div>
+      <div class="checkbox-row">
+        <input type="checkbox" id="DUAL_SCREEN" name="DUAL_SCREEN">
+        <label for="DUAL_SCREEN">Dual screen mode</label>
+      </div>
+    </div>
+
+    <!-- Portal -->
+    <div class="card">
+      <h2>Portal</h2>
+      <div class="field-row">
+        <div class="field">
+          <label for="PORTAL_PASSWORD">Portal Password</label>
+          <input type="password" id="PORTAL_PASSWORD" name="PORTAL_PASSWORD"
+                 placeholder="Leave blank for localhost-only">
+        </div>
+        <div class="field">
+          <label for="PORTAL_PORT">Portal Port</label>
+          <input type="number" id="PORTAL_PORT" name="PORTAL_PORT"
+                 min="1" max="65535" value="8080">
+        </div>
+      </div>
+    </div>
+
+    <button type="submit" class="btn-save">Save &amp; Restart</button>
+  </form>
+</div>
+
+<script>
+(function() {
+  "use strict";
+
+  // ── Clock ───────────────────────────────────────────────────
+  function updateClock() {
+    var now = new Date();
+    var h = String(now.getHours()).padStart(2, "0");
+    var m = String(now.getMinutes()).padStart(2, "0");
+    var s = String(now.getSeconds()).padStart(2, "0");
+    document.getElementById("clock").textContent = h + ":" + m + ":" + s;
+  }
+  updateClock();
+  setInterval(updateClock, 1000);
+
+  // ── URL param messages ──────────────────────────────────────
+  var params = new URLSearchParams(window.location.search);
+  if (params.get("saved") === "1") {
+    document.getElementById("msg-saved").style.display = "block";
+  }
+  if (params.get("errors")) {
+    var el = document.getElementById("msg-errors");
+    el.textContent = decodeURIComponent(params.get("errors"));
+    el.style.display = "block";
+  }
+
+  // ── Sysinfo polling ────────────────────────────────────────
+  function fetchSysinfo() {
+    fetch("/sysinfo").then(function(r) { return r.json(); }).then(function(data) {
+      var ssidEl = document.getElementById("wifi-ssid");
+      var dbmEl = document.getElementById("wifi-dbm");
+      var bars = document.getElementById("wifi-bars").children;
+
+      ssidEl.textContent = data.ssid || "--";
+      dbmEl.textContent = data.signal_dbm != null ? data.signal_dbm + " dBm" : "";
+
+      // Calculate bar count from dBm: -30 = excellent(4), -67 = good(3), -70 = fair(2), -80 = weak(1)
+      var level = 0;
+      if (data.signal_dbm != null) {
+        var dbm = data.signal_dbm;
+        if (dbm >= -50) level = 4;
+        else if (dbm >= -60) level = 3;
+        else if (dbm >= -70) level = 2;
+        else level = 1;
+      }
+      for (var i = 0; i < 4; i++) {
+        bars[i].className = i < level ? "active" : "";
+      }
+    }).catch(function() {});
+  }
+  fetchSysinfo();
+  setInterval(fetchSysinfo, 10000);
+
+  // ── Status / departures polling ────────────────────────────
+  function fetchStatus() {
+    fetch("/status").then(function(r) { return r.json(); }).then(function(data) {
+      var nameEl = document.getElementById("station-name");
+      nameEl.textContent = data.station_name || "";
+
+      var tbody = document.getElementById("dep-body");
+      if (!data.departures || data.departures.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="dep-empty">No departures</td></tr>';
+        return;
+      }
+      var html = "";
+      data.departures.forEach(function(d) {
+        html += "<tr>"
+          + "<td>" + esc(d.aimed) + "</td>"
+          + "<td>" + esc(d.destination) + "</td>"
+          + "<td>" + esc(d.platform || "-") + "</td>"
+          + "<td>" + esc(d.expected) + "</td>"
+          + "</tr>";
+      });
+      tbody.innerHTML = html;
+    }).catch(function() {});
+  }
+  fetchStatus();
+  setInterval(fetchStatus, 10000);
+
+  // ── Load config into form ──────────────────────────────────
+  fetch("/config").then(function(r) { return r.json(); }).then(function(cfg) {
+    setVal("DEPARTURE_STATION", cfg.DEPARTURE_STATION || cfg.departure_station);
+    setVal("DESTINATION_STATION", cfg.DESTINATION_STATION || cfg.destination_station);
+    setVal("API_KEY", cfg.API_KEY || cfg.api_key);
+    setVal("PLATFORM_FILTER", cfg.PLATFORM_FILTER || cfg.platform_filter);
+    setVal("SCREEN_BLANK_HOURS", cfg.SCREEN_BLANK_HOURS || cfg.screen_blank_hours);
+    setVal("REFRESH_TIME", cfg.REFRESH_TIME || cfg.refresh_time);
+    setVal("PORTAL_PORT", cfg.PORTAL_PORT || cfg.portal_port);
+    setVal("PORTAL_PASSWORD", cfg.PORTAL_PASSWORD || cfg.portal_password);
+
+    var rotation = cfg.SCREEN_ROTATION || cfg.screen_rotation;
+    if (rotation != null) {
+      document.getElementById("SCREEN_ROTATION").value = rotation;
+    }
+
+    setCheck("FIRST_DEPARTURE_BOLD",
+      toBool(cfg.FIRST_DEPARTURE_BOLD || cfg.first_departure_bold, true));
+    setCheck("SHOW_DEPARTURE_NUMBERS",
+      toBool(cfg.SHOW_DEPARTURE_NUMBERS || cfg.show_departure_numbers, false));
+    setCheck("DUAL_SCREEN",
+      toBool(cfg.DUAL_SCREEN || cfg.dual_screen, false));
+  }).catch(function() {});
+
+  function setVal(id, val) {
+    var el = document.getElementById(id);
+    if (el && val != null) el.value = val;
+  }
+
+  function setCheck(id, val) {
+    var el = document.getElementById(id);
+    if (el) el.checked = !!val;
+  }
+
+  function toBool(val, def) {
+    if (val === undefined || val === null || val === "") return def;
+    if (typeof val === "boolean") return val;
+    var s = String(val).toLowerCase();
+    if (s === "true" || s === "1" || s === "yes") return true;
+    if (s === "false" || s === "0" || s === "no") return false;
+    return def;
+  }
+
+  function esc(str) {
+    if (!str) return "";
+    var d = document.createElement("div");
+    d.appendChild(document.createTextNode(str));
+    return d.innerHTML;
+  }
+})();
+</script>
+</body>
+</html>
